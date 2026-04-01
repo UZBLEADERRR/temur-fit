@@ -1,0 +1,57 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id        Int      @id @default(autoincrement())
+  telegramId String   @unique
+  name      String
+  latitude  Float?
+  longitude Float?
+  timezone  String   @default("Asia/Tashkent")
+  role      String   @default("user") // "admin" or "user"
+  createdAt DateTime @default(now())
+
+  mealRecords MealRecord[]
+  mentions    Mention[]
+}
+
+model MealRecord {
+  id        Int      @id @default(autoincrement())
+  userId    Int
+  user      User     @relation(fields: [userId], references: [id])
+  date      String   // ISO date string local to user, e.g., "2026-04-02"
+  mealType  String   // "nonushta", "abed", "kechki_ovqat"
+  timeSent  DateTime // UTC timestamp when they sent the photo
+  status    String   // "on_time", "late"
+  
+  @@unique([userId, date, mealType])
+}
+
+model Mention {
+  id           Int      @id @default(autoincrement())
+  userId       Int
+  user         User     @relation(fields: [userId], references: [id])
+  mealType     String   // "nonushta", "abed", "kechki_ovqat"
+  date         String   // Local date e.g. "2026-04-02"
+  messageId    Int      // Telegram message ID to delete 
+  updatedAt    DateTime @updatedAt // Eslatma vaqtini aniqlash uchun
+  
+  @@unique([userId, mealType, date])
+}
+
+model Settings {
+  id                 Int      @id @default(1)
+  groupId            String?  
+  breakfastTime      String   @default("08:00")
+  lunchTime          String   @default("12:00")
+  dinnerTime         String   @default("18:00")
+  reminderInterval   Int      @default(60) 
+  pinnedMessageId    Int?
+  lastDailyUpdateStr String?  
+}
