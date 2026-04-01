@@ -147,46 +147,47 @@ function App() {
   return (
     <div style={{
       minHeight: '100vh',
-      background: 'linear-gradient(135deg, #0f172a 0%, #1e293b 100%)',
-      color: '#e2e8f0',
-      fontFamily: "'Inter', 'Segoe UI', sans-serif",
-      padding: 16
+      background: 'radial-gradient(circle at top left, #1e293b, #0f172a)',
+      color: '#f1f5f9',
+      fontFamily: "'Inter', sans-serif",
+      padding: '12px 8px'
     }}>
       <div style={{ maxWidth: 600, margin: '0 auto' }}>
 
         {/* Header */}
         <div style={{
-          background: 'rgba(30, 41, 59, 0.8)',
-          backdropFilter: 'blur(12px)',
-          borderRadius: 16,
-          padding: '16px 20px',
-          marginBottom: 24,
-          border: '1px solid rgba(148,163,184,0.15)',
+          background: 'rgba(30, 41, 59, 0.7)',
+          backdropFilter: 'blur(16px)',
+          borderRadius: 20,
+          padding: '12px 16px',
+          marginBottom: 20,
+          border: '1px solid rgba(255,255,255,0.05)',
           display: 'flex',
           justifyContent: 'space-between',
-          alignItems: 'center'
+          alignItems: 'center',
+          boxShadow: '0 10px 25px -5px rgba(0,0,0,0.3)'
         }}>
           <div>
             <h1 style={{
-              margin: 0, fontSize: 24, fontWeight: 800,
-              background: 'linear-gradient(90deg, #34d399, #22d3ee)',
+              margin: 0, fontSize: 20, fontWeight: 900,
+              background: 'linear-gradient(to right, #10b981, #06b6d4)',
               WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent',
+              letterSpacing: -0.5
             }}>
               Temur.fit
             </h1>
-            <p style={{ margin: 0, fontSize: 12, color: '#94a3b8' }}>Ratsion Nazorati</p>
+            <p style={{ margin: 0, fontSize: 10, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: 1 }}>Admin Pro</p>
           </div>
 
-          {/* Admin tab ni faqat admin ko'radi */}
           {isAdmin && (
-            <div style={{ display: 'flex', gap: 4, background: '#334155', borderRadius: 8, padding: 3 }}>
+            <div style={{ display: 'flex', gap: 2, background: 'rgba(15, 23, 42, 0.5)', borderRadius: 10, padding: 2 }}>
               <button
                 type="button"
                 onClick={() => setActiveTab('jadval')}
                 style={{
-                  padding: '8px 16px', borderRadius: 6, border: 'none', cursor: 'pointer', fontSize: 13, fontWeight: 600,
-                  background: activeTab === 'jadval' ? '#1e293b' : 'transparent',
-                  color: activeTab === 'jadval' ? '#34d399' : '#94a3b8', transition: 'all 0.2s'
+                  padding: '6px 14px', borderRadius: 8, border: 'none', cursor: 'pointer', fontSize: 12, fontWeight: 700,
+                  background: activeTab === 'jadval' ? '#10b981' : 'transparent',
+                  color: activeTab === 'jadval' ? '#fff' : '#94a3b8', transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)'
                 }}
               >
                 Jadval
@@ -195,38 +196,39 @@ function App() {
                 type="button"
                 onClick={() => setActiveTab('admin')}
                 style={{
-                  padding: '8px 16px', borderRadius: 6, border: 'none', cursor: 'pointer', fontSize: 13, fontWeight: 600,
-                  background: activeTab === 'admin' ? '#1e293b' : 'transparent',
-                  color: activeTab === 'admin' ? '#34d399' : '#94a3b8', transition: 'all 0.2s'
+                  padding: '6px 14px', borderRadius: 8, border: 'none', cursor: 'pointer', fontSize: 12, fontWeight: 700,
+                  background: activeTab === 'admin' ? '#10b981' : 'transparent',
+                  color: activeTab === 'admin' ? '#fff' : '#94a3b8', transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)'
                 }}
               >
-                Admin
+                Settings
               </button>
             </div>
           )}
         </div>
 
-        {/* Table Tab (hammaga ko'rinadi) */}
+        {/* Table Tab */}
         {(activeTab === 'jadval' || !isAdmin) && (
           <div style={{
-            background: 'rgba(30, 41, 59, 0.8)', backdropFilter: 'blur(12px)',
-            borderRadius: 16, border: '1px solid rgba(148,163,184,0.15)', overflow: 'hidden'
+            background: 'rgba(30, 41, 59, 0.6)', backdropFilter: 'blur(12px)',
+            borderRadius: 20, border: '1px solid rgba(255,255,255,0.05)', overflow: 'hidden',
+            boxShadow: '0 4px 6px -1px rgba(0,0,0,0.1)'
           }}>
             <div style={{
-              padding: '14px 20px', borderBottom: '1px solid rgba(148,163,184,0.15)',
+              padding: '16px 20px', borderBottom: '1px solid rgba(255,255,255,0.05)',
               display: 'flex', justifyContent: 'space-between', alignItems: 'center'
             }}>
-              <h2 style={{ margin: 0, fontSize: 16, fontWeight: 700 }}>👥 Guruh Jadvali</h2>
-              <span style={{ fontSize: 11, fontWeight: 600, background: '#334155', padding: '4px 10px', borderRadius: 6 }}>
+              <h2 style={{ margin: 0, fontSize: 15, fontWeight: 800, color: '#f8fafc' }}>👥 Reyting</h2>
+              <span style={{ fontSize: 10, fontWeight: 800, background: '#10b98122', color: '#10b981', padding: '4px 8px', borderRadius: 6, border: '1px solid #10b98144' }}>
                 {todayStr}
               </span>
             </div>
 
-            <div style={{ overflowX: 'auto' }}>
-              <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: 400 }}>
+            <div style={{ overflowX: 'auto', WebkitOverflowScrolling: 'touch' }}>
+              <table style={{ width: '100%', borderCollapse: 'collapse' }}>
                 <thead>
-                  <tr style={{ background: 'rgba(15,23,42,0.5)' }}>
-                    <th style={thStyle}>No</th>
+                  <tr style={{ background: 'rgba(15,23,42,0.3)' }}>
+                    <th style={thStyle}>#</th>
                     <th style={{...thStyle, textAlign: 'left'}}>Ism</th>
                     <th style={thStyle}>N</th>
                     <th style={thStyle}>A</th>
@@ -235,9 +237,9 @@ function App() {
                 </thead>
                 <tbody>
                   {users.map((user, idx) => (
-                    <tr key={user.id} style={{ borderBottom: '1px solid rgba(148,163,184,0.08)' }}>
-                      <td style={tdStyle}>{idx + 1}</td>
-                      <td style={{...tdStyle, textAlign: 'left', fontWeight: 600}}>{user.name}</td>
+                    <tr key={user.id} style={{ borderBottom: '1px solid rgba(255,255,255,0.03)' }}>
+                      <td style={{...tdStyle, color: '#64748b', fontSize: 11}}>{idx + 1}</td>
+                      <td style={{...tdStyle, textAlign: 'left', fontWeight: 600, color: '#e2e8f0'}}>{user.name}</td>
                       <td style={tdStyle}>{renderBadge(getStatus(user, 'nonushta'))}</td>
                       <td style={tdStyle}>{renderBadge(getStatus(user, 'abed'))}</td>
                       <td style={tdStyle}>{renderBadge(getStatus(user, 'kechki_ovqat'))}</td>
@@ -247,129 +249,72 @@ function App() {
               </table>
             </div>
             {users.length === 0 && (
-              <div style={{ padding: 32, textAlign: 'center', color: '#64748b', fontSize: 14 }}>
-                Hali hech kim ro'yxatdan o'tmagan
+              <div style={{ padding: 40, textAlign: 'center', color: '#64748b', fontSize: 13, fontStyle: 'italic' }}>
+                Hali ma'lumot yo'q...
               </div>
             )}
           </div>
         )}
 
-        {/* Admin Tab — faqat admin ko'radi va Admin tabni tanlagan bo'lsa */}
+        {/* Admin Tab */}
         {isAdmin && activeTab === 'admin' && (
           <form onSubmit={handleSaveSettings} style={{
-            background: 'rgba(30, 41, 59, 0.8)', backdropFilter: 'blur(12px)',
-            borderRadius: 16, border: '1px solid rgba(148,163,184,0.15)', padding: 24
+            display: 'flex', flexDirection: 'column', gap: 16
           }}>
-            <h2 style={{ margin: '0 0 20px 0', fontSize: 18, fontWeight: 700 }}>⚙️ Sozlamalar</h2>
-
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 16, marginBottom: 20 }}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
               
-              <div style={{ padding: 16, background: 'rgba(15,23,42,0.4)', borderRadius: 12, border: '1px solid #334155' }}>
-                <h3 style={{ margin: '0 0 12px 0', fontSize: 15, color: '#fcd34d' }}>🌅 Nonushta</h3>
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 12 }}>
-                  <div>
-                    <label style={labelStyle}>Boshlanishi</label>
-                    <input type="time" value={settings.breakfastStart} onChange={e=>setSettings({...settings, breakfastStart: e.target.value})} style={inputStyle} />
-                  </div>
-                  <div>
-                    <label style={labelStyle}>Tugashi</label>
-                    <input type="time" value={settings.breakfastEnd} onChange={e=>setSettings({...settings, breakfastEnd: e.target.value})} style={inputStyle} />
-                  </div>
-                  <div>
-                    <label style={labelStyle}>(Target)</label>
-                    <input type="time" value={settings.breakfastTime} onChange={e=>setSettings({...settings, breakfastTime: e.target.value})} style={inputStyle} />
-                  </div>
+              <SettingsCard title="🌅 Nonushta" color="#fbbf24">
+                <div style={grid3}>
+                  <Field label="Start" value={settings.breakfastStart} onChange={v=>setSettings({...settings, breakfastStart: v})} type="time" />
+                  <Field label="End" value={settings.breakfastEnd} onChange={v=>setSettings({...settings, breakfastEnd: v})} type="time" />
+                  <Field label="Ideal" value={settings.breakfastTime} onChange={v=>setSettings({...settings, breakfastTime: v})} type="time" />
                 </div>
-              </div>
+              </SettingsCard>
 
-              <div style={{ padding: 16, background: 'rgba(15,23,42,0.4)', borderRadius: 12, border: '1px solid #334155' }}>
-                <h3 style={{ margin: '0 0 12px 0', fontSize: 15, color: '#fbbf24' }}>☀️ Tushlik</h3>
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 12 }}>
-                  <div>
-                    <label style={labelStyle}>Boshlanishi</label>
-                    <input type="time" value={settings.lunchStart} onChange={e=>setSettings({...settings, lunchStart: e.target.value})} style={inputStyle} />
-                  </div>
-                  <div>
-                    <label style={labelStyle}>Tugashi</label>
-                    <input type="time" value={settings.lunchEnd} onChange={e=>setSettings({...settings, lunchEnd: e.target.value})} style={inputStyle} />
-                  </div>
-                  <div>
-                    <label style={labelStyle}>(Target)</label>
-                    <input type="time" value={settings.lunchTime} onChange={e=>setSettings({...settings, lunchTime: e.target.value})} style={inputStyle} />
-                  </div>
+              <SettingsCard title="☀️ Tushlik" color="#f59e0b">
+                <div style={grid3}>
+                  <Field label="Start" value={settings.lunchStart} onChange={v=>setSettings({...settings, lunchStart: v})} type="time" />
+                  <Field label="End" value={settings.lunchEnd} onChange={v=>setSettings({...settings, lunchEnd: v})} type="time" />
+                  <Field label="Ideal" value={settings.lunchTime} onChange={v=>setSettings({...settings, lunchTime: v})} type="time" />
                 </div>
-              </div>
+              </SettingsCard>
 
-              <div style={{ padding: 16, background: 'rgba(15,23,42,0.4)', borderRadius: 12, border: '1px solid #334155' }}>
-                <h3 style={{ margin: '0 0 12px 0', fontSize: 15, color: '#818cf8' }}>🌙 Kechki ovqat</h3>
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 12 }}>
-                  <div>
-                    <label style={labelStyle}>Boshlanishi</label>
-                    <input type="time" value={settings.dinnerStart} onChange={e=>setSettings({...settings, dinnerStart: e.target.value})} style={inputStyle} />
-                  </div>
-                  <div>
-                    <label style={labelStyle}>Tugashi</label>
-                    <input type="time" value={settings.dinnerEnd} onChange={e=>setSettings({...settings, dinnerEnd: e.target.value})} style={inputStyle} />
-                  </div>
-                  <div>
-                    <label style={labelStyle}>(Target)</label>
-                    <input type="time" value={settings.dinnerTime} onChange={e=>setSettings({...settings, dinnerTime: e.target.value})} style={inputStyle} />
-                  </div>
+              <SettingsCard title="🌙 Kechki" color="#818cf8">
+                <div style={grid3}>
+                  <Field label="Start" value={settings.dinnerStart} onChange={v=>setSettings({...settings, dinnerStart: v})} type="time" />
+                  <Field label="End" value={settings.dinnerEnd} onChange={v=>setSettings({...settings, dinnerEnd: v})} type="time" />
+                  <Field label="Ideal" value={settings.dinnerTime} onChange={v=>setSettings({...settings, dinnerTime: v})} type="time" />
                 </div>
-              </div>
+              </SettingsCard>
 
-              <div style={{ padding: 16, background: 'rgba(15,23,42,0.4)', borderRadius: 12, border: '1px solid #334155' }}>
-                <h3 style={{ margin: '0 0 12px 0', fontSize: 15, color: '#f43f5e' }}>🔔 Eslatmalar</h3>
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
-                  <div>
-                    <label style={labelStyle}>Oraliq (daqiqada)</label>
-                    <input type="number" value={settings.reminderInterval} onChange={e=>setSettings({...settings, reminderInterval: parseInt(e.target.value) || 60})} style={inputStyle} />
-                  </div>
-                  <div>
-                    <label style={labelStyle}>Maksimal limits (marta)</label>
-                    <input type="number" value={settings.maxReminders} onChange={e=>setSettings({...settings, maxReminders: parseInt(e.target.value) || 3})} style={inputStyle} />
-                  </div>
+              <SettingsCard title="🔔 Bildirishnomalar" color="#f43f5e">
+                <div style={grid2}>
+                  <Field label="Oraliq (daq)" value={settings.reminderInterval} onChange={v=>setSettings({...settings, reminderInterval: parseInt(v)||60})} type="number" />
+                  <Field label="Max Eslatma" value={settings.maxReminders} onChange={v=>setSettings({...settings, maxReminders: parseInt(v)||3})} type="number" />
                 </div>
-              </div>
+              </SettingsCard>
 
-            </div>
+              <SettingsCard title="📝 Kalit so'zlar" color="#38bdf8">
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                  <TextAreaField label="🌅 Nonushta uchun" value={settings.breakfastWords} onChange={v=>setSettings({...settings, breakfastWords: v})} />
+                  <TextAreaField label="☀️ Tushlik uchun" value={settings.lunchWords} onChange={v=>setSettings({...settings, lunchWords: v})} />
+                  <TextAreaField label="🌙 Kechki uchun" value={settings.dinnerWords} onChange={v=>setSettings({...settings, dinnerWords: v})} />
+                </div>
+              </SettingsCard>
 
-            <div style={{ borderTop: '1px solid rgba(148,163,184,0.15)', paddingTop: 20 }}>
-              <h3 style={{ margin: '0 0 16px 0', fontSize: 15, fontWeight: 600, color: '#38bdf8' }}>📝 Taniydigan so'zlar (vergul bilan ajrating)</h3>
-              
-              <div style={{ marginBottom: 16 }}>
-                <label style={labelStyle}>🌅 Nonushta u-n so'zlar</label>
-                <textarea rows={2} value={settings.breakfastWords}
-                  placeholder="#nonushta, nonushta, breakfast"
-                  onChange={e => setSettings({...settings, breakfastWords: e.target.value})}
-                  style={{ ...inputStyle, resize: 'vertical' }} />
-              </div>
-
-              <div style={{ marginBottom: 16 }}>
-                <label style={labelStyle}>☀️ Tushlik u-n so'zlar</label>
-                <textarea rows={2} value={settings.lunchWords}
-                  placeholder="#abed, abed, tushlik, lunch"
-                  onChange={e => setSettings({...settings, lunchWords: e.target.value})}
-                  style={{ ...inputStyle, resize: 'vertical' }} />
-              </div>
-
-              <div style={{ marginBottom: 16 }}>
-                <label style={labelStyle}>🌙 Kechki ovqat u-n so'zlar</label>
-                <textarea rows={2} value={settings.dinnerWords}
-                  placeholder="#kechki_ovqat, kechki, dinner"
-                  onChange={e => setSettings({...settings, dinnerWords: e.target.value})}
-                  style={{ ...inputStyle, resize: 'vertical' }} />
-              </div>
             </div>
 
             <button type="submit" disabled={saving} style={{
-              width: '100%', marginTop: 8, padding: '14px 0',
-              background: saving ? '#475569' : 'linear-gradient(90deg, #059669, #0891b2)',
-              color: '#fff', fontWeight: 700, fontSize: 15,
-              border: 'none', borderRadius: 12, cursor: saving ? 'not-allowed' : 'pointer',
-              transition: 'all 0.2s'
+              width: '100%', padding: '16px',
+              background: saving ? '#334155' : 'linear-gradient(135deg, #10b981 0%, #059669 100%)',
+              color: '#fff', fontWeight: 800, fontSize: 15,
+              border: 'none', borderRadius: 16, cursor: saving ? 'not-allowed' : 'pointer',
+              boxShadow: '0 10px 15px -3px rgba(16, 185, 129, 0.4)',
+              transition: 'all 0.2s transform active',
+              transform: saving ? 'none' : 'scale(1)',
+              marginBottom: 40
             }}>
-              {saving ? 'Saqlanmoqda...' : '💾 Saqlash'}
+              {saving ? 'SAQLANMOQDA...' : 'SAQLASH'}
             </button>
           </form>
         )}
@@ -378,26 +323,89 @@ function App() {
   );
 }
 
+// —— Components for better structure and Clean UI ——
+
+interface CardProps {
+  title: string;
+  children: React.ReactNode;
+  color: string;
+}
+
+const SettingsCard = ({ title, children, color }: CardProps) => (
+  <div style={{
+    background: 'rgba(30, 41, 59, 0.4)',
+    borderRadius: 16,
+    padding: '16px',
+    border: '1px solid rgba(255,255,255,0.03)',
+    boxShadow: '0 4px 6px -1px rgba(0,0,0,0.05)'
+  }}>
+    <h3 style={{ margin: '0 0 12px 0', fontSize: 13, fontWeight: 800, color, textTransform: 'uppercase', letterSpacing: 0.5 }}>{title}</h3>
+    {children}
+  </div>
+);
+
+interface FieldProps {
+  label: string;
+  value: string | number;
+  onChange: (val: string) => void;
+  type: string;
+}
+
+const Field = ({ label, value, onChange, type }: FieldProps) => (
+  <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+    <label style={{ fontSize: 10, fontWeight: 700, color: '#64748b', textTransform: 'uppercase' }}>{label}</label>
+    <input 
+      type={type} 
+      value={value} 
+      onChange={e => onChange(e.target.value)} 
+      style={{
+        width: '100%', padding: '8px 10px', fontSize: 13, fontWeight: 600,
+        background: 'rgba(15, 23, 42, 0.6)', border: '1px solid rgba(255,255,255,0.05)',
+        borderRadius: 10, color: '#f1f5f9', outline: 'none'
+      }} 
+    />
+  </div>
+);
+
+interface TextAreaFieldProps {
+  label: string;
+  value: string;
+  onChange: (val: string) => void;
+}
+
+const TextAreaField = ({ label, value, onChange }: TextAreaFieldProps) => (
+  <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+    <label style={{ fontSize: 10, fontWeight: 700, color: '#64748b', textTransform: 'uppercase' }}>{label}</label>
+    <textarea 
+      rows={2}
+      value={value} 
+      onChange={e => onChange(e.target.value)} 
+      style={{
+        width: '100%', padding: '10px', fontSize: 13, fontWeight: 500,
+        background: 'rgba(15, 23, 42, 0.6)', border: '1px solid rgba(255,255,255,0.05)',
+        borderRadius: 10, color: '#f1f5f9', outline: 'none', resize: 'none',
+        lineHeight: 1.4
+      }} 
+    />
+  </div>
+);
+
+const grid3: React.CSSProperties = {
+  display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(80px, 1fr))', gap: 10
+};
+
+const grid2: React.CSSProperties = {
+  display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10
+};
+
 const thStyle: React.CSSProperties = {
-  padding: '12px 8px', textAlign: 'center',
-  fontSize: 11, fontWeight: 700, textTransform: 'uppercase',
+  padding: '14px 12px', textAlign: 'center',
+  fontSize: 10, fontWeight: 900, textTransform: 'uppercase',
   color: '#94a3b8', letterSpacing: 1
 };
 
 const tdStyle: React.CSSProperties = {
-  padding: '12px 8px', textAlign: 'center', fontSize: 14
-};
-
-const labelStyle: React.CSSProperties = {
-  display: 'block', fontSize: 13, fontWeight: 600,
-  color: '#94a3b8', marginBottom: 6
-};
-
-const inputStyle: React.CSSProperties = {
-  width: '100%', padding: '10px 12px', fontSize: 14,
-  background: '#0f172a', border: '1px solid #334155',
-  borderRadius: 8, color: '#e2e8f0', outline: 'none',
-  boxSizing: 'border-box'
+  padding: '14px 12px', textAlign: 'center', fontSize: 13
 };
 
 export default App;
