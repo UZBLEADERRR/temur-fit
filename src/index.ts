@@ -26,6 +26,18 @@ app.get('/api/users', async (_req, res) => {
     }
 });
 
+// Admin tekshirish
+app.get('/api/check-admin/:telegramId', async (req, res) => {
+    try {
+        const user = await prisma.user.findUnique({
+            where: { telegramId: req.params.telegramId }
+        });
+        res.json({ isAdmin: user?.role === 'admin' });
+    } catch (e) {
+        res.status(500).json({ isAdmin: false });
+    }
+});
+
 // Sozlamalarni olish
 app.get('/api/settings', async (_req, res) => {
     try {

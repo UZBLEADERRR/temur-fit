@@ -3,6 +3,20 @@ import { format } from 'date-fns';
 
 const API_URL = import.meta.env.VITE_API_URL || '/api';
 
+// Telegram WebApp SDK
+declare global {
+  interface Window {
+    Telegram?: {
+      WebApp?: {
+        initDataUnsafe?: {
+          user?: { id: number; first_name: string; username?: string };
+        };
+        ready?: () => void;
+      };
+    };
+  }
+}
+
 interface MealRecord {
   id: number;
   date: string;
@@ -27,6 +41,7 @@ interface Settings {
 function App() {
   const [activeTab, setActiveTab] = useState('jadval');
   const [users, setUsers] = useState<User[]>([]);
+  const [isAdmin, setIsAdmin] = useState(false);
   const [settings, setSettings] = useState<Settings>({
     breakfastTime: '08:00',
     lunchTime: '12:00',
@@ -34,12 +49,21 @@ function App() {
     reminderInterval: 60
   });
   const [saving, setSaving] = useState(false);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    fetchData();
+    // Telegram WebApp initlashtirish
+    if (window.Telegram?.WebApp?.ready) {
+      window.Telegram.WebApp.ready();
+    }
+
+    const tgUser = window.Telegram?.WebApp?.initDataUnsafe?.user;
+    const telegramId = tgUser?.id ? String(tgUser.id) : null;
+
+    fetchData(telegramId);
   }, []);
 
-  const fetchData = async () => {
+  const fetchData = async (telegramId: string | null) => {
     try {
       const [resUsers, resSettings] = await Promise.all([
         fetch(`${API_URL}/users`).then(r => r.json()),
@@ -47,9 +71,16 @@ function App() {
       ]);
       setUsers(resUsers || []);
       if (resSettings) setSettings(resSettings);
+
+      // Admin tekshirish
+      if (telegramId) {
+        const adminRes = await fetch(`${API_URL}/check-admin/${telegramId}`).then(r => r.json());
+        setIsAdmin(adminRes.isAdmin === true);
+      }
     } catch (e) {
       console.error('Ma\'lumot olishda xato:', e);
     }
+    setLoading(false);
   };
 
   const handleSaveSettings = async (e: React.FormEvent) => {
@@ -62,7 +93,7 @@ function App() {
         body: JSON.stringify(settings)
       });
       alert('✅ Sozlamalar saqlandi!');
-    } catch (err) {
+    } catch {
       alert('❌ Xatolik yuz berdi');
     }
     setSaving(false);
@@ -81,6 +112,17 @@ function App() {
     if (status === 'late') return <span style={{color:'#f59e0b',fontSize:20}}>⚠</span>;
     return <span style={{color:'#64748b',fontSize:20}}>✖</span>;
   };
+
+  if (loading) {
+    return (
+      <div style={{
+        minHeight: '100vh', background: 'linear-gradient(135deg, #0f172a 0%, #1e293b 100%)',
+        display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#94a3b8', fontSize: 16
+      }}>
+        Yuklanmoqda...
+      </div>
+    );
+  }
 
   return (
     <div style={{
@@ -106,64 +148,54 @@ function App() {
         }}>
           <div>
             <h1 style={{
-              margin: 0,
-              fontSize: 24,
-              fontWeight: 800,
+              margin: 0, fontSize: 24, fontWeight: 800,
               background: 'linear-gradient(90deg, #34d399, #22d3ee)',
-              WebkitBackgroundClip: 'text',
-              WebkitTextFillColor: 'transparent',
+              WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent',
             }}>
               Temur.fit
             </h1>
             <p style={{ margin: 0, fontSize: 12, color: '#94a3b8' }}>Ratsion Nazorati</p>
           </div>
-          <div style={{ display: 'flex', gap: 4, background: '#334155', borderRadius: 8, padding: 3 }}>
-            <button 
-              onClick={() => setActiveTab('jadval')}
-              style={{
-                padding: '8px 16px', borderRadius: 6, border: 'none', cursor: 'pointer', fontSize: 13, fontWeight: 600,
-                background: activeTab === 'jadval' ? '#1e293b' : 'transparent',
-                color: activeTab === 'jadval' ? '#34d399' : '#94a3b8',
-                transition: 'all 0.2s'
-              }}
-            >
-              Jadval
-            </button>
-            <button 
-              onClick={() => setActiveTab('admin')}
-              style={{
-                padding: '8px 16px', borderRadius: 6, border: 'none', cursor: 'pointer', fontSize: 13, fontWeight: 600,
-                background: activeTab === 'admin' ? '#1e293b' : 'transparent',
-                color: activeTab === 'admin' ? '#34d399' : '#94a3b8',
-                transition: 'all 0.2s'
-              }}
-            >
-              Admin
-            </button>
-          </div>
+
+          {/* Admin tab ni faqat admin ko'radi */}
+          {isAdmin && (
+            <div style={{ display: 'flex', gap: 4, background: '#334155', borderRadius: 8, padding: 3 }}>
+              <button
+                onClick={() => setActiveTab('jadval')}
+                style={{
+                  padding: '8px 16px', borderRadius: 6, border: 'none', cursor: 'pointer', fontSize: 13, fontWeight: 600,
+                  background: activeTab === 'jadval' ? '#1e293b' : 'transparent',
+                  color: activeTab === 'jadval' ? '#34d399' : '#94a3b8', transition: 'all 0.2s'
+                }}
+              >
+                Jadval
+              </button>
+              <button
+                onClick={() => setActiveTab('admin')}
+                style={{
+                  padding: '8px 16px', borderRadius: 6, border: 'none', cursor: 'pointer', fontSize: 13, fontWeight: 600,
+                  background: activeTab === 'admin' ? '#1e293b' : 'transparent',
+                  color: activeTab === 'admin' ? '#34d399' : '#94a3b8', transition: 'all 0.2s'
+                }}
+              >
+                Admin
+              </button>
+            </div>
+          )}
         </div>
 
-        {/* Table Tab */}
-        {activeTab === 'jadval' ? (
+        {/* Table Tab (hammaga ko'rinadi) */}
+        {(activeTab === 'jadval' || !isAdmin) && (
           <div style={{
-            background: 'rgba(30, 41, 59, 0.8)',
-            backdropFilter: 'blur(12px)',
-            borderRadius: 16,
-            border: '1px solid rgba(148,163,184,0.15)',
-            overflow: 'hidden'
+            background: 'rgba(30, 41, 59, 0.8)', backdropFilter: 'blur(12px)',
+            borderRadius: 16, border: '1px solid rgba(148,163,184,0.15)', overflow: 'hidden'
           }}>
             <div style={{
-              padding: '14px 20px',
-              borderBottom: '1px solid rgba(148,163,184,0.15)',
-              display: 'flex',
-              justifyContent: 'space-between',
-              alignItems: 'center'
+              padding: '14px 20px', borderBottom: '1px solid rgba(148,163,184,0.15)',
+              display: 'flex', justifyContent: 'space-between', alignItems: 'center'
             }}>
               <h2 style={{ margin: 0, fontSize: 16, fontWeight: 700 }}>👥 Guruh Jadvali</h2>
-              <span style={{
-                fontSize: 11, fontWeight: 600,
-                background: '#334155', padding: '4px 10px', borderRadius: 6
-              }}>
+              <span style={{ fontSize: 11, fontWeight: 600, background: '#334155', padding: '4px 10px', borderRadius: 6 }}>
                 {todayStr}
               </span>
             </div>
@@ -196,33 +228,40 @@ function App() {
               </div>
             )}
           </div>
-        ) : (
-          /* Admin Tab */
+        )}
+
+        {/* Admin Tab — faqat admin ko'radi va Admin tabni tanlagan bo'lsa */}
+        {isAdmin && activeTab === 'admin' && (
           <form onSubmit={handleSaveSettings} style={{
-            background: 'rgba(30, 41, 59, 0.8)',
-            backdropFilter: 'blur(12px)',
-            borderRadius: 16,
-            border: '1px solid rgba(148,163,184,0.15)',
-            padding: 24
+            background: 'rgba(30, 41, 59, 0.8)', backdropFilter: 'blur(12px)',
+            borderRadius: 16, border: '1px solid rgba(148,163,184,0.15)', padding: 24
           }}>
             <h2 style={{ margin: '0 0 20px 0', fontSize: 18, fontWeight: 700 }}>⚙️ Sozlamalar</h2>
 
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
               <div>
                 <label style={labelStyle}>🌅 Nonushta vaqti</label>
-                <input type="time" value={settings.breakfastTime} onChange={e => setSettings({...settings, breakfastTime: e.target.value})} style={inputStyle} />
+                <input type="time" value={settings.breakfastTime}
+                  onChange={e => setSettings({...settings, breakfastTime: e.target.value})}
+                  style={inputStyle} />
               </div>
               <div>
                 <label style={labelStyle}>☀️ Tushlik vaqti</label>
-                <input type="time" value={settings.lunchTime} onChange={e => setSettings({...settings, lunchTime: e.target.value})} style={inputStyle} />
+                <input type="time" value={settings.lunchTime}
+                  onChange={e => setSettings({...settings, lunchTime: e.target.value})}
+                  style={inputStyle} />
               </div>
               <div>
                 <label style={labelStyle}>🌙 Kechki ovqat</label>
-                <input type="time" value={settings.dinnerTime} onChange={e => setSettings({...settings, dinnerTime: e.target.value})} style={inputStyle} />
+                <input type="time" value={settings.dinnerTime}
+                  onChange={e => setSettings({...settings, dinnerTime: e.target.value})}
+                  style={inputStyle} />
               </div>
               <div>
                 <label style={labelStyle}>⏱️ Eslatma oralig'i (daq)</label>
-                <input type="number" value={settings.reminderInterval} onChange={e => setSettings({...settings, reminderInterval: parseInt(e.target.value) || 60})} style={inputStyle} />
+                <input type="number" value={settings.reminderInterval}
+                  onChange={e => setSettings({...settings, reminderInterval: parseInt(e.target.value) || 60})}
+                  style={inputStyle} />
               </div>
             </div>
 
