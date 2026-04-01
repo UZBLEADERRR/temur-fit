@@ -1,5 +1,8 @@
 {
   "name": "temur-fit",
+  "engines": {
+    "node": ">=20"
+  },
   "version": "1.0.0",
   "description": "Temur.fit - Sport guruh ratsion nazorat boti",
   "main": "src/index.ts",
