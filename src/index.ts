@@ -29,8 +29,17 @@ app.get('/api/users', async (_req, res) => {
 // Admin tekshirish
 app.get('/api/check-admin/:telegramId', async (req, res) => {
     try {
+        const telegramId = req.params.telegramId;
+
+        // 1) Railway'da ADMIN_IDS=123456,789012 shaklida qo'yilgan bo'lsa
+        const envAdmins = (process.env.ADMIN_IDS || '').split(',').map(s => s.trim()).filter(Boolean);
+        if (envAdmins.includes(telegramId)) {
+            return res.json({ isAdmin: true });
+        }
+
+        // 2) Bazada role=admin bo'lsa
         const user = await prisma.user.findUnique({
-            where: { telegramId: req.params.telegramId }
+            where: { telegramId }
         });
         res.json({ isAdmin: user?.role === 'admin' });
     } catch (e) {
