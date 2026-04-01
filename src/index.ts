@@ -55,7 +55,7 @@ app.post('/api/settings', async (req, res) => {
 // ====== STATIC FILES (React WebApp) ======
 const clientDistPath = path.join(__dirname, '..', 'client', 'dist');
 app.use(express.static(clientDistPath));
-app.get('*', (_req, res) => {
+app.get('/{*path}', (_req, res) => {
     res.sendFile(path.join(clientDistPath, 'index.html'));
 });
 
