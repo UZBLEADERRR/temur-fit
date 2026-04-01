@@ -41,6 +41,7 @@ model Mention {
   date         String   // Local date e.g. "2026-04-02"
   messageId    Int      // Telegram message ID to delete 
   updatedAt    DateTime @updatedAt // Eslatma vaqtini aniqlash uchun
+  count        Int      @default(1)
   
   @@unique([userId, mealType, date])
 }
@@ -57,4 +58,11 @@ model Settings {
   breakfastWords     String   @default("nonushta,#nonushta")
   lunchWords         String   @default("abed,#abed,tushlik,#tushlik")
   dinnerWords        String   @default("kechki_ovqat,#kechki_ovqat,kechki,#kechki")
+  breakfastStart     String   @default("05:00")
+  breakfastEnd       String   @default("10:30")
+  lunchStart         String   @default("11:00")
+  lunchEnd           String   @default("15:30")
+  dinnerStart        String   @default("16:00")
+  dinnerEnd          String   @default("22:00")
+  maxReminders       Int      @default(3)
 }

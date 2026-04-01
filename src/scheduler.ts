@@ -97,19 +97,25 @@ export function startScheduler() {
                 const mTotalCurrent = localTime.getHours() * 60 + localTime.getMinutes();
 
                 const meals = [
-                    { type: 'nonushta', time: settings.breakfastTime, endTime: settings.lunchTime },
-                    { type: 'abed', time: settings.lunchTime, endTime: settings.dinnerTime },
-                    { type: 'kechki_ovqat', time: settings.dinnerTime, endTime: '22:00' }
+                    { type: 'nonushta', time: settings.breakfastTime, start: settings.breakfastStart, end: settings.breakfastEnd },
+                    { type: 'abed', time: settings.lunchTime, start: settings.lunchStart, end: settings.lunchEnd },
+                    { type: 'kechki_ovqat', time: settings.dinnerTime, start: settings.dinnerStart, end: settings.dinnerEnd }
                 ];
 
                 for (const meal of meals) {
-                    const [tH, tM] = meal.time.split(':').map(Number);
-                    const [eH, eM] = meal.endTime.split(':').map(Number);
-                    const mTotalTarget = tH * 60 + tM;
-                    const mTotalEnd = eH * 60 + eM;
+                    const [sH, sM] = meal.start.split(':').map(Number);
+                    const [eH, eM] = meal.end.split(':').map(Number);
+                    const mStart = sH * 60 + sM;
+                    const mEnd = eH * 60 + eM;
 
-                    // Faqat target va end vaqti orasida eslatma yuboramiz
-                    if (mTotalCurrent < mTotalTarget || mTotalCurrent > mTotalEnd) continue;
+                    let isOutsideBounds = false;
+                    if (mStart <= mEnd) {
+                        if (mTotalCurrent < mStart || mTotalCurrent > mEnd) isOutsideBounds = true;
+                    } else {
+                        if (mTotalCurrent < mStart && mTotalCurrent > mEnd) isOutsideBounds = true;
+                    }
+
+                    if (isOutsideBounds) continue;
 
                     // Allaqachon yuborgan bo'lsa — skip
                     const record = await prisma.mealRecord.findUnique({
@@ -123,6 +129,9 @@ export function startScheduler() {
                     });
 
                     if (existingMention) {
+                        // Max reminder ga yetib qolgan bo'lsa
+                        if (existingMention.count >= settings.maxReminders) continue;
+
                         // updatedAt dan beri interval vaqt o'tdimi?
                         const minutesSinceLast = differenceInMinutes(new Date(), existingMention.updatedAt);
                         if (minutesSinceLast < reminderInterval) continue;
@@ -146,11 +155,13 @@ export function startScheduler() {
                                 userId: user.id,
                                 mealType: meal.type,
                                 date: currentDateStr,
-                                messageId: sentMsg.message_id
+                                messageId: sentMsg.message_id,
+                                count: 1
                             },
                             update: {
                                 messageId: sentMsg.message_id,
-                                updatedAt: new Date()
+                                updatedAt: new Date(),
+                                count: { increment: 1 }
                             }
                         });
                     } catch (e) {

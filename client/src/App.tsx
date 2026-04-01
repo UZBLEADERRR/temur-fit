@@ -39,6 +39,13 @@ interface Settings {
   breakfastWords: string;
   lunchWords: string;
   dinnerWords: string;
+  breakfastStart: string;
+  breakfastEnd: string;
+  lunchStart: string;
+  lunchEnd: string;
+  dinnerStart: string;
+  dinnerEnd: string;
+  maxReminders: number;
 }
 
 function App() {
@@ -52,7 +59,14 @@ function App() {
     reminderInterval: 60,
     breakfastWords: 'nonushta,#nonushta',
     lunchWords: 'abed,#abed,tushlik,#tushlik',
-    dinnerWords: 'kechki_ovqat,#kechki_ovqat,kechki,#kechki'
+    dinnerWords: 'kechki_ovqat,#kechki_ovqat,kechki,#kechki',
+    breakfastStart: '05:00',
+    breakfastEnd: '10:30',
+    lunchStart: '11:00',
+    lunchEnd: '15:30',
+    dinnerStart: '16:00',
+    dinnerEnd: '22:00',
+    maxReminders: 3
   });
   const [saving, setSaving] = useState(false);
   const [loading, setLoading] = useState(true);
@@ -248,31 +262,76 @@ function App() {
           }}>
             <h2 style={{ margin: '0 0 20px 0', fontSize: 18, fontWeight: 700 }}>⚙️ Sozlamalar</h2>
 
-            <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) minmax(0, 1fr)', gap: 16, marginBottom: 20 }}>
-              <div>
-                <label style={labelStyle}>🌅 Nonushta vaqti</label>
-                <input type="time" value={settings.breakfastTime}
-                  onChange={e => setSettings({...settings, breakfastTime: e.target.value})}
-                  style={inputStyle} />
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 16, marginBottom: 20 }}>
+              
+              <div style={{ padding: 16, background: 'rgba(15,23,42,0.4)', borderRadius: 12, border: '1px solid #334155' }}>
+                <h3 style={{ margin: '0 0 12px 0', fontSize: 15, color: '#fcd34d' }}>🌅 Nonushta</h3>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 12 }}>
+                  <div>
+                    <label style={labelStyle}>Boshlanishi</label>
+                    <input type="time" value={settings.breakfastStart} onChange={e=>setSettings({...settings, breakfastStart: e.target.value})} style={inputStyle} />
+                  </div>
+                  <div>
+                    <label style={labelStyle}>Tugashi</label>
+                    <input type="time" value={settings.breakfastEnd} onChange={e=>setSettings({...settings, breakfastEnd: e.target.value})} style={inputStyle} />
+                  </div>
+                  <div>
+                    <label style={labelStyle}>(Target)</label>
+                    <input type="time" value={settings.breakfastTime} onChange={e=>setSettings({...settings, breakfastTime: e.target.value})} style={inputStyle} />
+                  </div>
+                </div>
               </div>
-              <div>
-                <label style={labelStyle}>☀️ Tushlik vaqti</label>
-                <input type="time" value={settings.lunchTime}
-                  onChange={e => setSettings({...settings, lunchTime: e.target.value})}
-                  style={inputStyle} />
+
+              <div style={{ padding: 16, background: 'rgba(15,23,42,0.4)', borderRadius: 12, border: '1px solid #334155' }}>
+                <h3 style={{ margin: '0 0 12px 0', fontSize: 15, color: '#fbbf24' }}>☀️ Tushlik</h3>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 12 }}>
+                  <div>
+                    <label style={labelStyle}>Boshlanishi</label>
+                    <input type="time" value={settings.lunchStart} onChange={e=>setSettings({...settings, lunchStart: e.target.value})} style={inputStyle} />
+                  </div>
+                  <div>
+                    <label style={labelStyle}>Tugashi</label>
+                    <input type="time" value={settings.lunchEnd} onChange={e=>setSettings({...settings, lunchEnd: e.target.value})} style={inputStyle} />
+                  </div>
+                  <div>
+                    <label style={labelStyle}>(Target)</label>
+                    <input type="time" value={settings.lunchTime} onChange={e=>setSettings({...settings, lunchTime: e.target.value})} style={inputStyle} />
+                  </div>
+                </div>
               </div>
-              <div>
-                <label style={labelStyle}>🌙 Kechki ovqat</label>
-                <input type="time" value={settings.dinnerTime}
-                  onChange={e => setSettings({...settings, dinnerTime: e.target.value})}
-                  style={inputStyle} />
+
+              <div style={{ padding: 16, background: 'rgba(15,23,42,0.4)', borderRadius: 12, border: '1px solid #334155' }}>
+                <h3 style={{ margin: '0 0 12px 0', fontSize: 15, color: '#818cf8' }}>🌙 Kechki ovqat</h3>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 12 }}>
+                  <div>
+                    <label style={labelStyle}>Boshlanishi</label>
+                    <input type="time" value={settings.dinnerStart} onChange={e=>setSettings({...settings, dinnerStart: e.target.value})} style={inputStyle} />
+                  </div>
+                  <div>
+                    <label style={labelStyle}>Tugashi</label>
+                    <input type="time" value={settings.dinnerEnd} onChange={e=>setSettings({...settings, dinnerEnd: e.target.value})} style={inputStyle} />
+                  </div>
+                  <div>
+                    <label style={labelStyle}>(Target)</label>
+                    <input type="time" value={settings.dinnerTime} onChange={e=>setSettings({...settings, dinnerTime: e.target.value})} style={inputStyle} />
+                  </div>
+                </div>
               </div>
-              <div>
-                <label style={labelStyle}>⏱️ Eslatma (daqiqada)</label>
-                <input type="number" value={settings.reminderInterval}
-                  onChange={e => setSettings({...settings, reminderInterval: parseInt(e.target.value) || 60})}
-                  style={inputStyle} />
+
+              <div style={{ padding: 16, background: 'rgba(15,23,42,0.4)', borderRadius: 12, border: '1px solid #334155' }}>
+                <h3 style={{ margin: '0 0 12px 0', fontSize: 15, color: '#f43f5e' }}>🔔 Eslatmalar</h3>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+                  <div>
+                    <label style={labelStyle}>Oraliq (daqiqada)</label>
+                    <input type="number" value={settings.reminderInterval} onChange={e=>setSettings({...settings, reminderInterval: parseInt(e.target.value) || 60})} style={inputStyle} />
+                  </div>
+                  <div>
+                    <label style={labelStyle}>Maksimal limits (marta)</label>
+                    <input type="number" value={settings.maxReminders} onChange={e=>setSettings({...settings, maxReminders: parseInt(e.target.value) || 3})} style={inputStyle} />
+                  </div>
+                </div>
               </div>
+
             </div>
 
             <div style={{ borderTop: '1px solid rgba(148,163,184,0.15)', paddingTop: 20 }}>

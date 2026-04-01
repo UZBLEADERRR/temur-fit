@@ -61,11 +61,24 @@ app.get('/api/settings', async (_req, res) => {
 // Sozlamalarni saqlash
 app.post('/api/settings', async (req, res) => {
     try {
-        const { breakfastTime, lunchTime, dinnerTime, reminderInterval, breakfastWords, lunchWords, dinnerWords } = req.body;
+        const { 
+            breakfastTime, lunchTime, dinnerTime, reminderInterval, 
+            breakfastWords, lunchWords, dinnerWords,
+            breakfastStart, breakfastEnd, lunchStart, lunchEnd, dinnerStart, dinnerEnd, maxReminders
+        } = req.body;
+        
         const s = await prisma.settings.upsert({
             where: { id: 1 },
-            update: { breakfastTime, lunchTime, dinnerTime, reminderInterval, breakfastWords, lunchWords, dinnerWords },
-            create: { breakfastTime, lunchTime, dinnerTime, reminderInterval, breakfastWords, lunchWords, dinnerWords }
+            update: { 
+                breakfastTime, lunchTime, dinnerTime, reminderInterval, 
+                breakfastWords, lunchWords, dinnerWords,
+                breakfastStart, breakfastEnd, lunchStart, lunchEnd, dinnerStart, dinnerEnd, maxReminders 
+            },
+            create: { 
+                breakfastTime, lunchTime, dinnerTime, reminderInterval, 
+                breakfastWords, lunchWords, dinnerWords,
+                breakfastStart, breakfastEnd, lunchStart, lunchEnd, dinnerStart, dinnerEnd, maxReminders 
+            }
         });
         res.json(s);
     } catch (e) {
