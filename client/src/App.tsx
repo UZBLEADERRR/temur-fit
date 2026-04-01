@@ -36,6 +36,9 @@ interface Settings {
   lunchTime: string;
   dinnerTime: string;
   reminderInterval: number;
+  breakfastWords: string;
+  lunchWords: string;
+  dinnerWords: string;
 }
 
 function App() {
@@ -46,7 +49,10 @@ function App() {
     breakfastTime: '08:00',
     lunchTime: '12:00',
     dinnerTime: '18:00',
-    reminderInterval: 60
+    reminderInterval: 60,
+    breakfastWords: 'nonushta,#nonushta',
+    lunchWords: 'abed,#abed,tushlik,#tushlik',
+    dinnerWords: 'kechki_ovqat,#kechki_ovqat,kechki,#kechki'
   });
   const [saving, setSaving] = useState(false);
   const [loading, setLoading] = useState(true);
@@ -161,6 +167,7 @@ function App() {
           {isAdmin && (
             <div style={{ display: 'flex', gap: 4, background: '#334155', borderRadius: 8, padding: 3 }}>
               <button
+                type="button"
                 onClick={() => setActiveTab('jadval')}
                 style={{
                   padding: '8px 16px', borderRadius: 6, border: 'none', cursor: 'pointer', fontSize: 13, fontWeight: 600,
@@ -171,6 +178,7 @@ function App() {
                 Jadval
               </button>
               <button
+                type="button"
                 onClick={() => setActiveTab('admin')}
                 style={{
                   padding: '8px 16px', borderRadius: 6, border: 'none', cursor: 'pointer', fontSize: 13, fontWeight: 600,
@@ -200,28 +208,30 @@ function App() {
               </span>
             </div>
 
-            <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-              <thead>
-                <tr style={{ background: 'rgba(15,23,42,0.5)' }}>
-                  <th style={thStyle}>No</th>
-                  <th style={{...thStyle, textAlign: 'left'}}>Ism</th>
-                  <th style={thStyle}>N</th>
-                  <th style={thStyle}>A</th>
-                  <th style={thStyle}>K</th>
-                </tr>
-              </thead>
-              <tbody>
-                {users.map((user, idx) => (
-                  <tr key={user.id} style={{ borderBottom: '1px solid rgba(148,163,184,0.08)' }}>
-                    <td style={tdStyle}>{idx + 1}</td>
-                    <td style={{...tdStyle, textAlign: 'left', fontWeight: 600}}>{user.name}</td>
-                    <td style={tdStyle}>{renderBadge(getStatus(user, 'nonushta'))}</td>
-                    <td style={tdStyle}>{renderBadge(getStatus(user, 'abed'))}</td>
-                    <td style={tdStyle}>{renderBadge(getStatus(user, 'kechki_ovqat'))}</td>
+            <div style={{ overflowX: 'auto' }}>
+              <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: 400 }}>
+                <thead>
+                  <tr style={{ background: 'rgba(15,23,42,0.5)' }}>
+                    <th style={thStyle}>No</th>
+                    <th style={{...thStyle, textAlign: 'left'}}>Ism</th>
+                    <th style={thStyle}>N</th>
+                    <th style={thStyle}>A</th>
+                    <th style={thStyle}>K</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
+                </thead>
+                <tbody>
+                  {users.map((user, idx) => (
+                    <tr key={user.id} style={{ borderBottom: '1px solid rgba(148,163,184,0.08)' }}>
+                      <td style={tdStyle}>{idx + 1}</td>
+                      <td style={{...tdStyle, textAlign: 'left', fontWeight: 600}}>{user.name}</td>
+                      <td style={tdStyle}>{renderBadge(getStatus(user, 'nonushta'))}</td>
+                      <td style={tdStyle}>{renderBadge(getStatus(user, 'abed'))}</td>
+                      <td style={tdStyle}>{renderBadge(getStatus(user, 'kechki_ovqat'))}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
             {users.length === 0 && (
               <div style={{ padding: 32, textAlign: 'center', color: '#64748b', fontSize: 14 }}>
                 Hali hech kim ro'yxatdan o'tmagan
@@ -238,7 +248,7 @@ function App() {
           }}>
             <h2 style={{ margin: '0 0 20px 0', fontSize: 18, fontWeight: 700 }}>⚙️ Sozlamalar</h2>
 
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
+            <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) minmax(0, 1fr)', gap: 16, marginBottom: 20 }}>
               <div>
                 <label style={labelStyle}>🌅 Nonushta vaqti</label>
                 <input type="time" value={settings.breakfastTime}
@@ -258,15 +268,43 @@ function App() {
                   style={inputStyle} />
               </div>
               <div>
-                <label style={labelStyle}>⏱️ Eslatma oralig'i (daq)</label>
+                <label style={labelStyle}>⏱️ Eslatma (daqiqada)</label>
                 <input type="number" value={settings.reminderInterval}
                   onChange={e => setSettings({...settings, reminderInterval: parseInt(e.target.value) || 60})}
                   style={inputStyle} />
               </div>
             </div>
 
+            <div style={{ borderTop: '1px solid rgba(148,163,184,0.15)', paddingTop: 20 }}>
+              <h3 style={{ margin: '0 0 16px 0', fontSize: 15, fontWeight: 600, color: '#38bdf8' }}>📝 Taniydigan so'zlar (vergul bilan ajrating)</h3>
+              
+              <div style={{ marginBottom: 16 }}>
+                <label style={labelStyle}>🌅 Nonushta u-n so'zlar</label>
+                <textarea rows={2} value={settings.breakfastWords}
+                  placeholder="#nonushta, nonushta, breakfast"
+                  onChange={e => setSettings({...settings, breakfastWords: e.target.value})}
+                  style={{ ...inputStyle, resize: 'vertical' }} />
+              </div>
+
+              <div style={{ marginBottom: 16 }}>
+                <label style={labelStyle}>☀️ Tushlik u-n so'zlar</label>
+                <textarea rows={2} value={settings.lunchWords}
+                  placeholder="#abed, abed, tushlik, lunch"
+                  onChange={e => setSettings({...settings, lunchWords: e.target.value})}
+                  style={{ ...inputStyle, resize: 'vertical' }} />
+              </div>
+
+              <div style={{ marginBottom: 16 }}>
+                <label style={labelStyle}>🌙 Kechki ovqat u-n so'zlar</label>
+                <textarea rows={2} value={settings.dinnerWords}
+                  placeholder="#kechki_ovqat, kechki, dinner"
+                  onChange={e => setSettings({...settings, dinnerWords: e.target.value})}
+                  style={{ ...inputStyle, resize: 'vertical' }} />
+              </div>
+            </div>
+
             <button type="submit" disabled={saving} style={{
-              width: '100%', marginTop: 24, padding: '14px 0',
+              width: '100%', marginTop: 8, padding: '14px 0',
               background: saving ? '#475569' : 'linear-gradient(90deg, #059669, #0891b2)',
               color: '#fff', fontWeight: 700, fontSize: 15,
               border: 'none', borderRadius: 12, cursor: saving ? 'not-allowed' : 'pointer',

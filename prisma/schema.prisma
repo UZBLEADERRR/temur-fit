@@ -54,4 +54,7 @@ model Settings {
   reminderInterval   Int      @default(60) 
   pinnedMessageId    Int?
   lastDailyUpdateStr String?  
+  breakfastWords     String   @default("nonushta,#nonushta")
+  lunchWords         String   @default("abed,#abed,tushlik,#tushlik")
+  dinnerWords        String   @default("kechki_ovqat,#kechki_ovqat,kechki,#kechki")
 }

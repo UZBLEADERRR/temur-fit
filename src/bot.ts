@@ -31,7 +31,8 @@ async function isUserInGroup(userId: number, groupId: string): Promise<boolean> 
 
 async function updatePinnedTable() {
     const settings = await getSettings();
-    if (!settings.groupId || !settings.pinnedMessageId) return;
+    const groupId = process.env.ALLOWED_GROUP_ID || settings.groupId;
+    if (!groupId || !settings.pinnedMessageId) return;
 
     const koreaTime = toZonedTime(new Date(), 'Asia/Seoul');
     const dateStr = format(koreaTime, 'yyyy-MM-dd', { timeZone: 'Asia/Seoul' });
@@ -58,7 +59,7 @@ async function updatePinnedTable() {
 
     try {
         await bot.telegram.editMessageText(
-            settings.groupId,
+            groupId,
             settings.pinnedMessageId,
             undefined,
             table,
@@ -99,7 +100,7 @@ bot.command('setgroup', async (ctx) => {
         data: { groupId: String(ctx.chat.id) }
     });
 
-    ctx.reply("✅ Ushbu guruh asosiy guruh sifatida belgilandi! Endi userlar botga /start bosib ro'yxatdan o'tishi mumkin.");
+    ctx.reply("✅ Ushbu guruh asosiy guruh sifatida belgilandi! Endi userlar botga /start bosib ro'yxatdan o'tishi mumkin. Agar Railway'da ALLOWED_GROUP_ID bo'lsa, o'sha prioritetga ega bo'ladi.");
 });
 
 // ========== /start — Ro'yxatdan o'tish ==========
@@ -108,12 +109,13 @@ bot.start(async (ctx) => {
 
     const telegramId = String(ctx.from.id);
     const settings = await getSettings();
+    const groupId = process.env.ALLOWED_GROUP_ID || settings.groupId;
 
-    if (!settings.groupId) {
-        return ctx.reply("⚠️ Hali guruh sozlanmagan. Admin guruhga botni qo'shib /setgroup bosishi kerak.");
+    if (!groupId) {
+        return ctx.reply("⚠️ Hali guruh sozlanmagan. Admin guruhga botni qo'shib /setgroup bosishi yoki Railway'da ALLOWED_GROUP_ID kiritishi kerak.");
     }
 
-    const inGroup = await isUserInGroup(ctx.from.id, settings.groupId);
+    const inGroup = await isUserInGroup(ctx.from.id, groupId);
     if (!inGroup) {
         return ctx.reply("❌ Kechirasiz, siz Temur.fit guruhining a'zosi emassiz!");
     }
@@ -124,7 +126,10 @@ bot.start(async (ctx) => {
         return ctx.reply("Assalomu alaykum! Iltimos, ismingizni kiriting:", Markup.forceReply());
     }
 
-    if (user.role === 'admin') {
+    const envAdmins = (process.env.ADMIN_IDS || '').split(',').map(s => s.trim()).filter(Boolean);
+    const isAdmin = user.role === 'admin' || envAdmins.includes(telegramId);
+
+    if (isAdmin) {
         return ctx.reply(`Xush kelibsiz, ${user.name}! 🏋️`, Markup.inlineKeyboard([
             Markup.button.webApp("⚙️ Boshqaruv Paneli", process.env.WEBAPP_URL || 'https://google.com')
         ]));
@@ -181,7 +186,7 @@ bot.on('message', async (ctx, next) => {
             }
         });
 
-        return ctx.reply(`✅ Ajoyib! Vaqt mintaqangiz: ${timezone}\nEndi guruhga rasm + #nonushta / #abed / #kechki_ovqat deb yuboring.`, Markup.removeKeyboard());
+        return ctx.reply(`✅ Ajoyib! Vaqt mintaqangiz: ${timezone}\nEndi guruhga ratsioningizni jo'nating.`, Markup.removeKeyboard());
     }
 
     return next();
@@ -192,22 +197,30 @@ bot.on('photo', async (ctx) => {
     if (ctx.chat.type === 'private') return;
 
     const settings = await getSettings();
-    if (String(ctx.chat.id) !== settings.groupId) return;
+    const groupId = process.env.ALLOWED_GROUP_ID || settings.groupId;
+    
+    if (String(ctx.chat.id) !== groupId) return;
 
     const caption = (ctx.message.caption || '').toLowerCase();
-    if (!caption.includes('#nonushta') && !caption.includes('#abed') && !caption.includes('#kechki_ovqat')) {
-        return;
-    }
+    
+    // So'zlarni parchalab olish funksiyasi
+    const parseWords = (text: string) => text.split(',').map(s => s.trim().toLowerCase()).filter(Boolean);
+    
+    const bWords = parseWords(settings.breakfastWords);
+    const lWords = parseWords(settings.lunchWords);
+    const dWords = parseWords(settings.dinnerWords);
+
+    let mealType = '';
+    if (bWords.some(w => caption.includes(w))) mealType = 'nonushta';
+    else if (lWords.some(w => caption.includes(w))) mealType = 'abed';
+    else if (dWords.some(w => caption.includes(w))) mealType = 'kechki_ovqat';
+
+    if (!mealType) return; // Agar birorta ham tasdiqlangan so'z kiritilmagan bo'lsa, reaksya yo'q.
 
     const user = await prisma.user.findUnique({ where: { telegramId: String(ctx.from.id) } });
     if (!user) {
         return ctx.reply("Avval botga /start bosib ro'yxatdan o'ting!", { reply_parameters: { message_id: ctx.message.message_id } });
     }
-
-    let mealType = '';
-    if (caption.includes('#nonushta')) mealType = 'nonushta';
-    else if (caption.includes('#abed')) mealType = 'abed';
-    else if (caption.includes('#kechki_ovqat')) mealType = 'kechki_ovqat';
 
     const localTime = toZonedTime(new Date(), user.timezone);
     const currentDateStr = format(localTime, 'yyyy-MM-dd', { timeZone: user.timezone });
@@ -226,7 +239,7 @@ bot.on('photo', async (ctx) => {
 
     // 2 soatdan oldin yuborilsa — rad etish
     if (diffHours < -2) {
-        return ctx.reply(`⏰ Hali ${mealType} vaqtiga 2 soatdan ko'proq vaqt bor. Biroz kuting!`, { reply_parameters: { message_id: ctx.message.message_id } });
+        return ctx.reply(`⏰ Hali bu ovqat vaqtiga 2 soatdan ko'proq vaqt bor. Biroz kuting!`, { reply_parameters: { message_id: ctx.message.message_id } });
     }
 
     // Status aniqlash

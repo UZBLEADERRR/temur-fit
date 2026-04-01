@@ -85,7 +85,8 @@ export function startScheduler() {
     cron.schedule('* * * * *', async () => {
         try {
             const settings = await prisma.settings.findFirst();
-            if (!settings || !settings.groupId) return;
+            const groupId = process.env.ALLOWED_GROUP_ID || settings?.groupId;
+            if (!settings || !groupId) return;
 
             const users = await prisma.user.findMany();
             const reminderInterval = settings.reminderInterval || 60;
@@ -128,7 +129,7 @@ export function startScheduler() {
 
                         // Eski eslatmani o'chirish
                         try {
-                            await bot.telegram.deleteMessage(settings.groupId, existingMention.messageId);
+                            await bot.telegram.deleteMessage(groupId, existingMention.messageId);
                         } catch (e) { /* xabar allaqachon o'chirilgan */ }
                     }
 
@@ -137,7 +138,7 @@ export function startScheduler() {
                     const text = `⚠️ <a href="tg://user?id=${user.telegramId}">${user.name}</a> ${mealLabel}ni jo'natmadingiz! Tezroq bo'ling, Temurning jahli chiqyapti! 😤`;
 
                     try {
-                        const sentMsg = await bot.telegram.sendMessage(settings.groupId, text, { parse_mode: 'HTML' });
+                        const sentMsg = await bot.telegram.sendMessage(groupId, text, { parse_mode: 'HTML' });
 
                         await prisma.mention.upsert({
                             where: { userId_mealType_date: { userId: user.id, mealType: meal.type, date: currentDateStr } },
@@ -166,7 +167,8 @@ export function startScheduler() {
     cron.schedule('0 6 * * *', async () => {
         try {
             const settings = await prisma.settings.findFirst();
-            if (!settings || !settings.groupId) return;
+            const groupId = process.env.ALLOWED_GROUP_ID || settings?.groupId;
+            if (!settings || !groupId) return;
 
             const koreaTime = toZonedTime(new Date(), 'Asia/Seoul');
             const dateStr = format(koreaTime, 'yyyy-MM-dd', { timeZone: 'Asia/Seoul' });
@@ -174,7 +176,7 @@ export function startScheduler() {
             // Eski pin ni olib tashlash
             if (settings.pinnedMessageId) {
                 try {
-                    await bot.telegram.unpinChatMessage(settings.groupId, settings.pinnedMessageId);
+                    await bot.telegram.unpinChatMessage(groupId, settings.pinnedMessageId);
                 } catch (e) { /* ignore */ }
             }
 
@@ -189,7 +191,7 @@ export function startScheduler() {
                 table += `${String(idx + 1).padStart(2)}. ${name} | ✖ | ✖ | ✖\n`;
             });
 
-            const msg = await bot.telegram.sendMessage(settings.groupId, table, {
+            const msg = await bot.telegram.sendMessage(groupId, table, {
                 reply_markup: {
                     inline_keyboard: [[
                         { text: "📊 Jadvalni ko'rish", web_app: { url: process.env.WEBAPP_URL || 'https://google.com' } }
@@ -197,7 +199,7 @@ export function startScheduler() {
                 }
             });
 
-            await bot.telegram.pinChatMessage(settings.groupId, msg.message_id, { disable_notification: false });
+            await bot.telegram.pinChatMessage(groupId, msg.message_id, { disable_notification: false });
 
             await prisma.settings.update({
                 where: { id: 1 },
