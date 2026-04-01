@@ -148,7 +148,8 @@ export function startScheduler() {
                                 messageId: sentMsg.message_id
                             },
                             update: {
-                                messageId: sentMsg.message_id
+                                messageId: sentMsg.message_id,
+                                updatedAt: new Date()
                             }
                         });
                     } catch (e) {
