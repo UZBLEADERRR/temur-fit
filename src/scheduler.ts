@@ -4,90 +4,212 @@ import { bot } from './bot';
 import { toZonedTime, format } from 'date-fns-tz';
 import { differenceInMinutes } from 'date-fns';
 
+const MEAL_LABELS: Record<string, string> = {
+    nonushta: 'Nonushta',
+    abed: 'Tushlik',
+    kechki_ovqat: 'Kechki ovqat'
+};
+
+async function updatePinnedTable() {
+    const settings = await prisma.settings.findFirst();
+    if (!settings || !settings.groupId) return;
+
+    const koreaTime = toZonedTime(new Date(), 'Asia/Seoul');
+    const dateStr = format(koreaTime, 'yyyy-MM-dd', { timeZone: 'Asia/Seoul' });
+
+    const users = await prisma.user.findMany({
+        include: {
+            mealRecords: {
+                where: { date: dateStr }
+            }
+        },
+        orderBy: { id: 'asc' }
+    });
+
+    if (users.length === 0) return;
+
+    let table = `📅 Sana: ${dateStr}\n💪 Temur.fit ratsion jadvali\n\n`;
+    table += `No | Ism          | N | A | K\n`;
+    table += `────────────────────────────\n`;
+
+    users.forEach((user, idx) => {
+        const getStatus = (type: string) => {
+            const record = user.mealRecords.find(r => r.mealType === type);
+            if (!record) return '✖';
+            return record.status === 'late' ? '⚠' : '●';
+        };
+        const n = getStatus('nonushta');
+        const a = getStatus('abed');
+        const k = getStatus('kechki_ovqat');
+        const name = user.name.padEnd(12).substring(0, 12);
+        table += `${String(idx + 1).padStart(2)}. ${name} | ${n} | ${a} | ${k}\n`;
+    });
+
+    try {
+        if (settings.pinnedMessageId) {
+            // Tahrirlash
+            try {
+                await bot.telegram.editMessageText(
+                    settings.groupId,
+                    settings.pinnedMessageId,
+                    undefined,
+                    table,
+                    {
+                        reply_markup: {
+                            inline_keyboard: [[
+                                { text: "📊 Jadvalni ko'rish", web_app: { url: process.env.WEBAPP_URL || 'https://google.com' } }
+                            ]]
+                        }
+                    }
+                );
+            } catch (e) {
+                // Agar xabar o'chirilgan bo'lsa, yangi yaratamiz
+                const msg = await bot.telegram.sendMessage(settings.groupId, table, {
+                    reply_markup: {
+                        inline_keyboard: [[
+                            { text: "📊 Jadvalni ko'rish", web_app: { url: process.env.WEBAPP_URL || 'https://google.com' } }
+                        ]]
+                    }
+                });
+                await bot.telegram.pinChatMessage(settings.groupId, msg.message_id, { disable_notification: true });
+                await prisma.settings.update({ where: { id: 1 }, data: { pinnedMessageId: msg.message_id } });
+            }
+        }
+    } catch (e) {
+        console.error('Pinned jadval yangilash xatosi:', e);
+    }
+}
+
 export function startScheduler() {
-    // Run every minute
+    // ===== Har 1 daqiqada eslatma tekshiruvchi =====
     cron.schedule('* * * * *', async () => {
-        const settings = await prisma.settings.findFirst();
-        if (!settings || !settings.groupId) return;
+        try {
+            const settings = await prisma.settings.findFirst();
+            if (!settings || !settings.groupId) return;
 
-        const users = await prisma.user.findMany();
+            const users = await prisma.user.findMany();
+            const reminderInterval = settings.reminderInterval || 60;
 
-        for (const user of users) {
-             const localTime = toZonedTime(new Date(), user.timezone);
-             const currentDateStr = format(localTime, 'yyyy-MM-dd', { timeZone: user.timezone });
-             const currentTimeStr = format(localTime, 'HH:mm');
-             const mTotalCurrent = localTime.getHours() * 60 + localTime.getMinutes();
+            for (const user of users) {
+                const localTime = toZonedTime(new Date(), user.timezone);
+                const currentDateStr = format(localTime, 'yyyy-MM-dd', { timeZone: user.timezone });
+                const mTotalCurrent = localTime.getHours() * 60 + localTime.getMinutes();
 
-             const meals = [
-                 { type: 'nonushta', time: settings.breakfastTime, endHour: 12 }, 
-                 { type: 'abed', time: settings.lunchTime, endHour: 15 },
-                 { type: 'kechki_ovqat', time: settings.dinnerTime, endHour: 22 }
-             ];
+                const meals = [
+                    { type: 'nonushta', time: settings.breakfastTime, endTime: settings.lunchTime },
+                    { type: 'abed', time: settings.lunchTime, endTime: settings.dinnerTime },
+                    { type: 'kechki_ovqat', time: settings.dinnerTime, endTime: '22:00' }
+                ];
 
-             for (const meal of meals) {
-                 const [tH, tM] = meal.time.split(':').map(Number);
-                 const mTotalTarget = tH * 60 + tM;
+                for (const meal of meals) {
+                    const [tH, tM] = meal.time.split(':').map(Number);
+                    const [eH, eM] = meal.endTime.split(':').map(Number);
+                    const mTotalTarget = tH * 60 + tM;
+                    const mTotalEnd = eH * 60 + eM;
 
-                 // If current local time is past the target time and before end hour
-                 if (mTotalCurrent >= mTotalTarget && localTime.getHours() <= meal.endHour) {
-                     // Check if sent
-                     const record = await prisma.mealRecord.findUnique({
-                         where: { userId_date_mealType: { userId: user.id, date: currentDateStr, mealType: meal.type } }
-                     });
+                    // Faqat target va end vaqti orasida eslatma yuboramiz
+                    if (mTotalCurrent < mTotalTarget || mTotalCurrent > mTotalEnd) continue;
 
-                     if (!record) {
-                         // Needs reminder. Check if we mentioned them recently
-                         const lastMention = await prisma.mention.findUnique({
-                             where: { userId_mealType_date: { userId: user.id, mealType: meal.type, date: currentDateStr } }
-                         });
+                    // Allaqachon yuborgan bo'lsa — skip
+                    const record = await prisma.mealRecord.findUnique({
+                        where: { userId_date_mealType: { userId: user.id, date: currentDateStr, mealType: meal.type } }
+                    });
+                    if (record) continue;
 
-                         let shouldRemind = false;
-                         if (!lastMention) {
-                             shouldRemind = true;
-                         } else {
-                             // Let's rely on updated_at or create a timestamp for Mention, but since it's just ID we can fetch standard
-                             // Actually we need to add `lastRemindedAt` to Mention to accurately check the interval. Let's assume Mention happened at least reminderInterval ago. 
-                             // Wait, I will just update the Mention model in schema to have `createdAt` or use memory.
-                             // For now, let's keep it simple: We'll add updatedAt string to Mention, wait, Mention doesn't have it. Let's just update the schema below and push!
-                         }
-                     }
-                 }
-             }
+                    // Oxirgi eslatmani tekshirish
+                    const existingMention = await prisma.mention.findUnique({
+                        where: { userId_mealType_date: { userId: user.id, mealType: meal.type, date: currentDateStr } }
+                    });
+
+                    if (existingMention) {
+                        // updatedAt dan beri interval vaqt o'tdimi?
+                        const minutesSinceLast = differenceInMinutes(new Date(), existingMention.updatedAt);
+                        if (minutesSinceLast < reminderInterval) continue;
+
+                        // Eski eslatmani o'chirish
+                        try {
+                            await bot.telegram.deleteMessage(settings.groupId, existingMention.messageId);
+                        } catch (e) { /* xabar allaqachon o'chirilgan */ }
+                    }
+
+                    // Yangi eslatma yuborish
+                    const mealLabel = MEAL_LABELS[meal.type] || meal.type;
+                    const text = `⚠️ <a href="tg://user?id=${user.telegramId}">${user.name}</a> ${mealLabel}ni jo'natmadingiz! Tezroq bo'ling, Temurning jahli chiqyapti! 😤`;
+
+                    try {
+                        const sentMsg = await bot.telegram.sendMessage(settings.groupId, text, { parse_mode: 'HTML' });
+
+                        await prisma.mention.upsert({
+                            where: { userId_mealType_date: { userId: user.id, mealType: meal.type, date: currentDateStr } },
+                            create: {
+                                userId: user.id,
+                                mealType: meal.type,
+                                date: currentDateStr,
+                                messageId: sentMsg.message_id
+                            },
+                            update: {
+                                messageId: sentMsg.message_id
+                            }
+                        });
+                    } catch (e) {
+                        console.error(`Eslatma yuborishda xato (${user.name}):`, e);
+                    }
+                }
+            }
+        } catch (e) {
+            console.error('Scheduler xatosi:', e);
         }
     });
 
-    // At 06:00 AM Korea Time, send new Daily Pinned Table
+    // ===== Koreya vaqti bilan ertalab 06:00 da yangi kunlik jadval =====
     cron.schedule('0 6 * * *', async () => {
-         const settings = await prisma.settings.findFirst();
-         if (!settings || !settings.groupId) return;
-         
-         const koreTime = toZonedTime(new Date(), 'Asia/Seoul');
-         const dateStr = format(koreTime, 'yyyy-MM-dd');
+        try {
+            const settings = await prisma.settings.findFirst();
+            if (!settings || !settings.groupId) return;
 
-         const text = `📅 Sana: ${dateStr}\n💪 Temur.fit ratsion jadvali\n\nJadval ostidagi Web App orqali kengroq malumot oling!`;
-         
-         try {
-             const prevMsg = settings.pinnedMessageId;
-             if (prevMsg) {
-                 try { await bot.telegram.unpinChatMessage(settings.groupId, prevMsg); } catch(e){}
-             }
-             
-             const msg = await bot.telegram.sendMessage(settings.groupId, text, {
-                  reply_markup: {
-                      inline_keyboard: [[ { text: "Jadvalni ko'rish", web_app: { url: process.env.WEBAPP_URL || "https://google.com" } } ]]
-                  }
-             });
-             
-             await bot.telegram.pinChatMessage(settings.groupId, msg.message_id);
-             
-             await prisma.settings.update({
-                  where: { id: 1 },
-                  data: { pinnedMessageId: msg.message_id, lastDailyUpdateStr: dateStr }
-             });
-         } catch (e) {
-             console.error("Pinned message error", e);
-         }
+            const koreaTime = toZonedTime(new Date(), 'Asia/Seoul');
+            const dateStr = format(koreaTime, 'yyyy-MM-dd', { timeZone: 'Asia/Seoul' });
+
+            // Eski pin ni olib tashlash
+            if (settings.pinnedMessageId) {
+                try {
+                    await bot.telegram.unpinChatMessage(settings.groupId, settings.pinnedMessageId);
+                } catch (e) { /* ignore */ }
+            }
+
+            // Yangi jadval yaratish
+            const users = await prisma.user.findMany({ orderBy: { id: 'asc' } });
+            let table = `📅 Sana: ${dateStr}\n💪 Temur.fit ratsion jadvali\n\n`;
+            table += `No | Ism          | N | A | K\n`;
+            table += `────────────────────────────\n`;
+
+            users.forEach((user, idx) => {
+                const name = user.name.padEnd(12).substring(0, 12);
+                table += `${String(idx + 1).padStart(2)}. ${name} | ✖ | ✖ | ✖\n`;
+            });
+
+            const msg = await bot.telegram.sendMessage(settings.groupId, table, {
+                reply_markup: {
+                    inline_keyboard: [[
+                        { text: "📊 Jadvalni ko'rish", web_app: { url: process.env.WEBAPP_URL || 'https://google.com' } }
+                    ]]
+                }
+            });
+
+            await bot.telegram.pinChatMessage(settings.groupId, msg.message_id, { disable_notification: false });
+
+            await prisma.settings.update({
+                where: { id: 1 },
+                data: { pinnedMessageId: msg.message_id, lastDailyUpdateStr: dateStr }
+            });
+
+            console.log(`Yangi kunlik jadval yuborildi: ${dateStr}`);
+        } catch (e) {
+            console.error('Kunlik jadval xatosi:', e);
+        }
     }, {
-         timezone: "Asia/Seoul"
+        timezone: 'Asia/Seoul'
     });
 }
+
+export { updatePinnedTable };

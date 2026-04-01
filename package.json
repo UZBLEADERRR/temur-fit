@@ -1,13 +1,12 @@
 {
-  "name": "temur.fit",
+  "name": "temur-fit",
   "version": "1.0.0",
-  "description": "",
-  "main": "index.js",
+  "description": "Temur.fit - Sport guruh ratsion nazorat boti",
+  "main": "src/index.ts",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1",
     "start": "npx tsx src/index.ts",
     "dev": "npx tsx watch src/index.ts",
-    "build": "cd client && npm run build",
+    "build": "cd client && npm install && npm run build",
     "postinstall": "npx prisma generate"
   },
   "keywords": [],
