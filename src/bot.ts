@@ -225,57 +225,23 @@ bot.on('photo', async (ctx) => {
     const localTime = toZonedTime(new Date(), user.timezone);
     const currentDateStr = format(localTime, 'yyyy-MM-dd', { timeZone: user.timezone });
 
-    // Target vaqt va oraliqlarni olish
+    // Target vaqtni olish
     let targetTimeStr = '';
-    let startStr = '';
-    let endStr = '';
-
-    if (mealType === 'nonushta') { 
-        targetTimeStr = settings.breakfastTime; 
-        startStr = settings.breakfastStart; 
-        endStr = settings.breakfastEnd; 
-    } else if (mealType === 'abed') { 
-        targetTimeStr = settings.lunchTime; 
-        startStr = settings.lunchStart; 
-        endStr = settings.lunchEnd; 
-    } else if (mealType === 'kechki_ovqat') { 
-        targetTimeStr = settings.dinnerTime; 
-        startStr = settings.dinnerStart; 
-        endStr = settings.dinnerEnd; 
-    }
+    if (mealType === 'nonushta') targetTimeStr = settings.breakfastTime; 
+    else if (mealType === 'abed') targetTimeStr = settings.lunchTime; 
+    else if (mealType === 'kechki_ovqat') targetTimeStr = settings.dinnerTime; 
 
     const [tH, tM] = targetTimeStr.split(':').map(Number);
-    const [sH, sM] = startStr.split(':').map(Number);
-    const [eH, eM] = endStr.split(':').map(Number);
-
     const mCurrent = localTime.getHours() * 60 + localTime.getMinutes();
     const mTarget = tH * 60 + tM;
-    const mStart = sH * 60 + sM;
-    const mEnd = eH * 60 + eM;
 
-    // Cheklovdan tashqaridami (kunlik wrap-around - yarim tundan o'tgan intervalni ham hisobga olamiz)?
-    let isOutsideBounds = false;
-    if (mStart <= mEnd) {
-        if (mCurrent < mStart || mCurrent > mEnd) isOutsideBounds = true;
-    } else {
-        // e.g., 22:00 dan 04:00 gacha
-        if (mCurrent < mStart && mCurrent > mEnd) isOutsideBounds = true;
-    }
-
-    if (isOutsideBounds) {
-        const hS = startStr;
-        const hE = endStr;
-        return ctx.reply(`⏰ Ruxsat etilgan vaqt oralig'idan tashqarida! Bu ovqatni faqat ${hS} dan ${hE} gacha guruhga jo'natish mumkin.`, { reply_parameters: { message_id: ctx.message.message_id } });
-    }
-
-    // Status aniqlash (faqatgina 1 soatdan kech qolsa 'late' beriladi, yoki ruxsat doirasida bo'lsa qat'iy 'on_time' ?)
-    // Hoziroq ruxsat etilgan vaqt ichida bo'lsa 'on_time' deymiz, biroq targetdan qanchadir o'tsa warning qilishimiz mumkin.
+    // Status aniqlash (faqatgina 1 soatdan kech qolsa 'late' beriladi)
     let status = 'on_time';
     if (mCurrent > mTarget + 60) {
         status = 'late';
-        await ctx.reply("⚠️ Belgilangan eng ideal vaqtdan kechikib jo'natdingiz, biroq ruxsat etilgan oraliqda qabul qilindi 😔", { reply_parameters: { message_id: ctx.message.message_id } });
+        await ctx.reply("⚠️ Belgilangan vaqtdan kechikib jo'natdingiz, biroq qabul qilindi 😔", { reply_parameters: { message_id: ctx.message.message_id } });
     } else {
-        await ctx.reply("✅ Qabul qilindi! Temur xursand 💪", { reply_parameters: { message_id: ctx.message.message_id } });
+        await ctx.reply("✅ Qabul qilindi! 💪", { reply_parameters: { message_id: ctx.message.message_id } });
     }
 
     // Bazaga yozish

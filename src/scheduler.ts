@@ -97,25 +97,19 @@ export function startScheduler() {
                 const mTotalCurrent = localTime.getHours() * 60 + localTime.getMinutes();
 
                 const meals = [
-                    { type: 'nonushta', time: settings.breakfastTime, start: settings.breakfastStart, end: settings.breakfastEnd },
-                    { type: 'abed', time: settings.lunchTime, start: settings.lunchStart, end: settings.lunchEnd },
-                    { type: 'kechki_ovqat', time: settings.dinnerTime, start: settings.dinnerStart, end: settings.dinnerEnd }
+                    { type: 'nonushta', time: settings.breakfastTime, nextTime: settings.lunchTime },
+                    { type: 'abed', time: settings.lunchTime, nextTime: settings.dinnerTime },
+                    { type: 'kechki_ovqat', time: settings.dinnerTime, nextTime: '23:59' }
                 ];
 
                 for (const meal of meals) {
-                    const [sH, sM] = meal.start.split(':').map(Number);
-                    const [eH, eM] = meal.end.split(':').map(Number);
-                    const mStart = sH * 60 + sM;
-                    const mEnd = eH * 60 + eM;
+                    const [tH, tM] = meal.time.split(':').map(Number);
+                    const [nH, nM] = meal.nextTime.split(':').map(Number);
+                    const mTarget = tH * 60 + tM;
+                    const mNext = nH * 60 + nM;
 
-                    let isOutsideBounds = false;
-                    if (mStart <= mEnd) {
-                        if (mTotalCurrent < mStart || mTotalCurrent > mEnd) isOutsideBounds = true;
-                    } else {
-                        if (mTotalCurrent < mStart && mTotalCurrent > mEnd) isOutsideBounds = true;
-                    }
-
-                    if (isOutsideBounds) continue;
+                    // Faqat target vaqtdan keyin va keyingi ovqatgacha eslatma yuboramiz
+                    if (mTotalCurrent <= mTarget || mTotalCurrent > mNext) continue;
 
                     // Allaqachon yuborgan bo'lsa — skip
                     const record = await prisma.mealRecord.findUnique({
@@ -144,7 +138,7 @@ export function startScheduler() {
 
                     // Yangi eslatma yuborish
                     const mealLabel = MEAL_LABELS[meal.type] || meal.type;
-                    const text = `⚠️ <a href="tg://user?id=${user.telegramId}">${user.name}</a> ${mealLabel}ni jo'natmadingiz! Tezroq bo'ling, Temurning jahli chiqyapti! 😤`;
+                    const text = `⚠️ <a href="tg://user?id=${user.telegramId}">${user.name}</a> ${mealLabel}ni jo'natmadingiz! Tezroq bo'ling! 😤`;
 
                     try {
                         const sentMsg = await bot.telegram.sendMessage(groupId, text, { parse_mode: 'HTML' });

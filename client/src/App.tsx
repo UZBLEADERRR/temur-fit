@@ -39,12 +39,6 @@ interface Settings {
   breakfastWords: string;
   lunchWords: string;
   dinnerWords: string;
-  breakfastStart: string;
-  breakfastEnd: string;
-  lunchStart: string;
-  lunchEnd: string;
-  dinnerStart: string;
-  dinnerEnd: string;
   maxReminders: number;
 }
 
@@ -60,12 +54,6 @@ function App() {
     breakfastWords: 'nonushta,#nonushta',
     lunchWords: 'abed,#abed,tushlik,#tushlik',
     dinnerWords: 'kechki_ovqat,#kechki_ovqat,kechki,#kechki',
-    breakfastStart: '05:00',
-    breakfastEnd: '10:30',
-    lunchStart: '11:00',
-    lunchEnd: '15:30',
-    dinnerStart: '16:00',
-    dinnerEnd: '22:00',
     maxReminders: 3
   });
   const [saving, setSaving] = useState(false);
@@ -264,27 +252,15 @@ function App() {
             <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
               
               <SettingsCard title="🌅 Nonushta" color="#fbbf24">
-                <div style={grid3}>
-                  <Field label="Start" value={settings.breakfastStart} onChange={v=>setSettings({...settings, breakfastStart: v})} type="time" />
-                  <Field label="End" value={settings.breakfastEnd} onChange={v=>setSettings({...settings, breakfastEnd: v})} type="time" />
-                  <Field label="Ideal" value={settings.breakfastTime} onChange={v=>setSettings({...settings, breakfastTime: v})} type="time" />
-                </div>
+                <Field label="Ideal vaqt" value={settings.breakfastTime} onChange={v=>setSettings({...settings, breakfastTime: v})} type="time" />
               </SettingsCard>
 
               <SettingsCard title="☀️ Tushlik" color="#f59e0b">
-                <div style={grid3}>
-                  <Field label="Start" value={settings.lunchStart} onChange={v=>setSettings({...settings, lunchStart: v})} type="time" />
-                  <Field label="End" value={settings.lunchEnd} onChange={v=>setSettings({...settings, lunchEnd: v})} type="time" />
-                  <Field label="Ideal" value={settings.lunchTime} onChange={v=>setSettings({...settings, lunchTime: v})} type="time" />
-                </div>
+                <Field label="Ideal vaqt" value={settings.lunchTime} onChange={v=>setSettings({...settings, lunchTime: v})} type="time" />
               </SettingsCard>
 
               <SettingsCard title="🌙 Kechki" color="#818cf8">
-                <div style={grid3}>
-                  <Field label="Start" value={settings.dinnerStart} onChange={v=>setSettings({...settings, dinnerStart: v})} type="time" />
-                  <Field label="End" value={settings.dinnerEnd} onChange={v=>setSettings({...settings, dinnerEnd: v})} type="time" />
-                  <Field label="Ideal" value={settings.dinnerTime} onChange={v=>setSettings({...settings, dinnerTime: v})} type="time" />
-                </div>
+                <Field label="Ideal vaqt" value={settings.dinnerTime} onChange={v=>setSettings({...settings, dinnerTime: v})} type="time" />
               </SettingsCard>
 
               <SettingsCard title="🔔 Bildirishnomalar" color="#f43f5e">

@@ -63,21 +63,18 @@ app.post('/api/settings', async (req, res) => {
     try {
         const { 
             breakfastTime, lunchTime, dinnerTime, reminderInterval, 
-            breakfastWords, lunchWords, dinnerWords,
-            breakfastStart, breakfastEnd, lunchStart, lunchEnd, dinnerStart, dinnerEnd, maxReminders
+            breakfastWords, lunchWords, dinnerWords, maxReminders
         } = req.body;
         
         const s = await prisma.settings.upsert({
             where: { id: 1 },
             update: { 
                 breakfastTime, lunchTime, dinnerTime, reminderInterval, 
-                breakfastWords, lunchWords, dinnerWords,
-                breakfastStart, breakfastEnd, lunchStart, lunchEnd, dinnerStart, dinnerEnd, maxReminders 
+                breakfastWords, lunchWords, dinnerWords, maxReminders 
             },
             create: { 
                 breakfastTime, lunchTime, dinnerTime, reminderInterval, 
-                breakfastWords, lunchWords, dinnerWords,
-                breakfastStart, breakfastEnd, lunchStart, lunchEnd, dinnerStart, dinnerEnd, maxReminders 
+                breakfastWords, lunchWords, dinnerWords, maxReminders 
             }
         });
         res.json(s);
