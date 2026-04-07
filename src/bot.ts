@@ -239,7 +239,7 @@ bot.on('photo', async (ctx) => {
     let status = 'on_time';
     if (mCurrent > mTarget + 60) {
         status = 'late';
-        await ctx.reply("⚠️ Belgilangan vaqtdan kechikib jo'natdingiz, biroq qabul qilindi 😔", { reply_parameters: { message_id: ctx.message.message_id } });
+        await ctx.reply("✅ Qabul qilindi! 💪", { reply_parameters: { message_id: ctx.message.message_id } });
     } else {
         await ctx.reply("✅ Qabul qilindi! 💪", { reply_parameters: { message_id: ctx.message.message_id } });
     }
