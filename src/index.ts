@@ -17,7 +17,24 @@ app.use(express.json());
 app.get('/api/users', async (_req, res) => {
     try {
         const users = await prisma.user.findMany({
-            include: { mealRecords: true },
+            include: { mealRecords: true, reminderOverrides: true },
+            orderBy: { id: 'asc' }
+        });
+        res.json(users);
+    } catch (e) {
+        res.status(500).json({ error: 'Server xatosi' });
+    }
+});
+
+// Ma'lum sana bo'yicha userlar va ularning ovqat hisobotlari
+app.get('/api/users-by-date/:date', async (req, res) => {
+    try {
+        const dateStr = req.params.date; // format: yyyy-MM-dd
+        const users = await prisma.user.findMany({
+            include: {
+                mealRecords: { where: { date: dateStr } },
+                reminderOverrides: true
+            },
             orderBy: { id: 'asc' }
         });
         res.json(users);
@@ -78,6 +95,31 @@ app.post('/api/settings', async (req, res) => {
             }
         });
         res.json(s);
+    } catch (e) {
+        res.status(500).json({ error: 'Server xatosi' });
+    }
+});
+
+// Eslatma yoqish/o'chirish (toggle)
+app.post('/api/reminder-overrides', async (req, res) => {
+    try {
+        const { userId, mealType, muted } = req.body;
+        
+        if (muted) {
+            // Eslatmani o'chirish (mute qilish)
+            const override = await prisma.reminderOverride.upsert({
+                where: { userId_mealType: { userId, mealType } },
+                create: { userId, mealType, muted: true },
+                update: { muted: true }
+            });
+            res.json(override);
+        } else {
+            // Eslatmani yoqish (unmute) — bazadan o'chirish
+            await prisma.reminderOverride.deleteMany({
+                where: { userId, mealType }
+            });
+            res.json({ success: true });
+        }
     } catch (e) {
         res.status(500).json({ error: 'Server xatosi' });
     }

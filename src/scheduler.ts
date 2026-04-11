@@ -111,6 +111,12 @@ export function startScheduler() {
                     // Faqat target vaqtdan keyin va keyingi ovqatgacha eslatma yuboramiz
                     if (mTotalCurrent <= mTarget || mTotalCurrent > mNext) continue;
 
+                    // Eslatma o'chirilganligini tekshirish (ReminderOverride)
+                    const override = await prisma.reminderOverride.findUnique({
+                        where: { userId_mealType: { userId: user.id, mealType: meal.type } }
+                    });
+                    if (override?.muted) continue;
+
                     // Allaqachon yuborgan bo'lsa — skip
                     const record = await prisma.mealRecord.findUnique({
                         where: { userId_date_mealType: { userId: user.id, date: currentDateStr, mealType: meal.type } }

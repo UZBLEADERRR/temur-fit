@@ -17,8 +17,9 @@ model User {
   role      String   @default("user") // "admin" or "user"
   createdAt DateTime @default(now())
 
-  mealRecords MealRecord[]
-  mentions    Mention[]
+  mealRecords       MealRecord[]
+  mentions          Mention[]
+  reminderOverrides ReminderOverride[]
 }
 
 model MealRecord {
@@ -59,4 +60,15 @@ model Settings {
   lunchWords         String   @default("abed,#abed,tushlik,#tushlik")
   dinnerWords        String   @default("kechki_ovqat,#kechki_ovqat,kechki,#kechki")
   maxReminders       Int      @default(3)
+}
+
+model ReminderOverride {
+  id        Int      @id @default(autoincrement())
+  userId    Int
+  user      User     @relation(fields: [userId], references: [id])
+  mealType  String   // "nonushta", "abed", "kechki_ovqat"
+  muted     Boolean  @default(true)
+  createdAt DateTime @default(now())
+
+  @@unique([userId, mealType])
 }

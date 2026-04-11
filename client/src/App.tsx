@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { format } from 'date-fns';
+import { format, addDays, subDays } from 'date-fns';
 
 const API_URL = import.meta.env.VITE_API_URL || '/api';
 
@@ -17,6 +17,13 @@ declare global {
   }
 }
 
+interface ReminderOverride {
+  id: number;
+  userId: number;
+  mealType: string;
+  muted: boolean;
+}
+
 interface MealRecord {
   id: number;
   date: string;
@@ -29,6 +36,7 @@ interface User {
   name: string;
   timezone: string;
   mealRecords: MealRecord[];
+  reminderOverrides: ReminderOverride[];
 }
 
 interface Settings {
@@ -58,6 +66,8 @@ function App() {
   });
   const [saving, setSaving] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [selectedDate, setSelectedDate] = useState(format(new Date(), 'yyyy-MM-dd'));
+  const [togglingMute, setTogglingMute] = useState<string | null>(null);
 
   useEffect(() => {
     // Telegram WebApp initlashtirish
@@ -71,10 +81,15 @@ function App() {
     fetchData(telegramId);
   }, []);
 
+  // Sana o'zgarganda yangi data yuklash
+  useEffect(() => {
+    fetchUsersByDate(selectedDate);
+  }, [selectedDate]);
+
   const fetchData = async (telegramId: string | null) => {
     try {
       const [resUsers, resSettings] = await Promise.all([
-        fetch(`${API_URL}/users`).then(r => r.json()),
+        fetch(`${API_URL}/users-by-date/${selectedDate}`).then(r => r.json()),
         fetch(`${API_URL}/settings`).then(r => r.json())
       ]);
       setUsers(resUsers || []);
@@ -89,6 +104,16 @@ function App() {
       console.error('Ma\'lumot olishda xato:', e);
     }
     setLoading(false);
+  };
+
+  const fetchUsersByDate = async (dateStr: string) => {
+    try {
+      const res = await fetch(`${API_URL}/users-by-date/${dateStr}`);
+      const data = await res.json();
+      setUsers(data || []);
+    } catch (e) {
+      console.error('Sana bo\'yicha ma\'lumot olishda xato:', e);
+    }
   };
 
   const handleSaveSettings = async (e: React.FormEvent) => {
@@ -107,10 +132,32 @@ function App() {
     setSaving(false);
   };
 
+  const handleToggleMute = async (userId: number, mealType: string, currentlyMuted: boolean) => {
+    const key = `${userId}-${mealType}`;
+    setTogglingMute(key);
+    try {
+      await fetch(`${API_URL}/reminder-overrides`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ userId, mealType, muted: !currentlyMuted })
+      });
+      // Datani qayta yuklash
+      await fetchUsersByDate(selectedDate);
+    } catch (e) {
+      console.error('Eslatma toggle xatosi:', e);
+    }
+    setTogglingMute(null);
+  };
+
+  const isReminderMuted = (user: User, mealType: string): boolean => {
+    return user.reminderOverrides?.some(o => o.mealType === mealType && o.muted) || false;
+  };
+
   const todayStr = format(new Date(), 'yyyy-MM-dd');
+  const isToday = selectedDate === todayStr;
 
   const getStatus = (user: User, type: string) => {
-    const record = user.mealRecords.find(r => r.mealType === type && r.date === todayStr);
+    const record = user.mealRecords.find(r => r.mealType === type && r.date === selectedDate);
     if (!record) return 'none';
     return record.status;
   };
@@ -119,6 +166,21 @@ function App() {
     if (status === 'on_time') return <span style={{color:'#22c55e',fontSize:20}}>●</span>;
     if (status === 'late') return <span style={{color:'#f59e0b',fontSize:20}}>⚠</span>;
     return <span style={{color:'#64748b',fontSize:20}}>✖</span>;
+  };
+
+  const goToPrevDay = () => {
+    setSelectedDate(format(subDays(new Date(selectedDate), 1), 'yyyy-MM-dd'));
+  };
+
+  const goToNextDay = () => {
+    const next = addDays(new Date(selectedDate), 1);
+    if (next <= new Date()) {
+      setSelectedDate(format(next, 'yyyy-MM-dd'));
+    }
+  };
+
+  const goToToday = () => {
+    setSelectedDate(todayStr);
   };
 
   if (loading) {
@@ -169,46 +231,101 @@ function App() {
 
           {isAdmin && (
             <div style={{ display: 'flex', gap: 2, background: 'rgba(15, 23, 42, 0.5)', borderRadius: 10, padding: 2 }}>
-              <button
-                type="button"
-                onClick={() => setActiveTab('jadval')}
-                style={{
-                  padding: '6px 14px', borderRadius: 8, border: 'none', cursor: 'pointer', fontSize: 12, fontWeight: 700,
-                  background: activeTab === 'jadval' ? '#10b981' : 'transparent',
-                  color: activeTab === 'jadval' ? '#fff' : '#94a3b8', transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)'
-                }}
-              >
-                Jadval
-              </button>
-              <button
-                type="button"
-                onClick={() => setActiveTab('admin')}
-                style={{
-                  padding: '6px 14px', borderRadius: 8, border: 'none', cursor: 'pointer', fontSize: 12, fontWeight: 700,
-                  background: activeTab === 'admin' ? '#10b981' : 'transparent',
-                  color: activeTab === 'admin' ? '#fff' : '#94a3b8', transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)'
-                }}
-              >
-                Settings
-              </button>
+              {(['jadval', 'eslatma', 'admin'] as const).map(tab => (
+                <button
+                  key={tab}
+                  type="button"
+                  onClick={() => setActiveTab(tab)}
+                  style={{
+                    padding: '6px 12px', borderRadius: 8, border: 'none', cursor: 'pointer', fontSize: 11, fontWeight: 700,
+                    background: activeTab === tab ? '#10b981' : 'transparent',
+                    color: activeTab === tab ? '#fff' : '#94a3b8', transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)'
+                  }}
+                >
+                  {tab === 'jadval' ? 'Jadval' : tab === 'eslatma' ? 'Eslatma' : 'Settings'}
+                </button>
+              ))}
             </div>
           )}
         </div>
 
-        {/* Table Tab */}
+        {/* ===================== TABLE TAB ===================== */}
         {(activeTab === 'jadval' || !isAdmin) && (
           <div style={{
             background: 'rgba(30, 41, 59, 0.6)', backdropFilter: 'blur(12px)',
             borderRadius: 20, border: '1px solid rgba(255,255,255,0.05)', overflow: 'hidden',
             boxShadow: '0 4px 6px -1px rgba(0,0,0,0.1)'
           }}>
+            {/* Date Navigation */}
             <div style={{
-              padding: '16px 20px', borderBottom: '1px solid rgba(255,255,255,0.05)',
+              padding: '12px 16px', borderBottom: '1px solid rgba(255,255,255,0.05)',
+              display: 'flex', justifyContent: 'space-between', alignItems: 'center'
+            }}>
+              <button type="button" onClick={goToPrevDay} style={navBtnStyle}>◀</button>
+              
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                <input
+                  type="date"
+                  value={selectedDate}
+                  max={todayStr}
+                  onChange={e => setSelectedDate(e.target.value)}
+                  style={{
+                    background: 'rgba(15, 23, 42, 0.6)',
+                    border: '1px solid rgba(255,255,255,0.1)',
+                    borderRadius: 10,
+                    color: '#f1f5f9',
+                    padding: '6px 10px',
+                    fontSize: 12,
+                    fontWeight: 700,
+                    cursor: 'pointer',
+                    outline: 'none',
+                    colorScheme: 'dark'
+                  }}
+                />
+                {!isToday && (
+                  <button type="button" onClick={goToToday} style={{
+                    background: 'linear-gradient(135deg, #10b981, #059669)',
+                    border: 'none',
+                    borderRadius: 8,
+                    color: '#fff',
+                    padding: '6px 10px',
+                    fontSize: 10,
+                    fontWeight: 800,
+                    cursor: 'pointer',
+                    letterSpacing: 0.5,
+                    boxShadow: '0 2px 8px rgba(16,185,129,0.3)'
+                  }}>
+                    BUGUN
+                  </button>
+                )}
+              </div>
+
+              <button 
+                type="button" 
+                onClick={goToNextDay}
+                disabled={isToday}
+                style={{
+                  ...navBtnStyle,
+                  opacity: isToday ? 0.3 : 1,
+                  cursor: isToday ? 'not-allowed' : 'pointer'
+                }}
+              >▶</button>
+            </div>
+
+            {/* Title */}
+            <div style={{
+              padding: '12px 20px', borderBottom: '1px solid rgba(255,255,255,0.05)',
               display: 'flex', justifyContent: 'space-between', alignItems: 'center'
             }}>
               <h2 style={{ margin: 0, fontSize: 15, fontWeight: 800, color: '#f8fafc' }}>👥 Reyting</h2>
-              <span style={{ fontSize: 10, fontWeight: 800, background: '#10b98122', color: '#10b981', padding: '4px 8px', borderRadius: 6, border: '1px solid #10b98144' }}>
-                {todayStr}
+              <span style={{ 
+                fontSize: 10, fontWeight: 800, 
+                background: isToday ? '#10b98122' : '#f59e0b22', 
+                color: isToday ? '#10b981' : '#f59e0b', 
+                padding: '4px 8px', borderRadius: 6, 
+                border: `1px solid ${isToday ? '#10b98144' : '#f59e0b44'}` 
+              }}>
+                {isToday ? '📅 Bugun' : `📅 ${selectedDate}`}
               </span>
             </div>
 
@@ -244,7 +361,95 @@ function App() {
           </div>
         )}
 
-        {/* Admin Tab */}
+        {/* ===================== ESLATMA TAB ===================== */}
+        {isAdmin && activeTab === 'eslatma' && (
+          <div style={{
+            background: 'rgba(30, 41, 59, 0.6)', backdropFilter: 'blur(12px)',
+            borderRadius: 20, border: '1px solid rgba(255,255,255,0.05)', overflow: 'hidden',
+            boxShadow: '0 4px 6px -1px rgba(0,0,0,0.1)'
+          }}>
+            <div style={{
+              padding: '16px 20px', borderBottom: '1px solid rgba(255,255,255,0.05)',
+              display: 'flex', justifyContent: 'space-between', alignItems: 'center'
+            }}>
+              <h2 style={{ margin: 0, fontSize: 15, fontWeight: 800, color: '#f8fafc' }}>🔔 Eslatma Boshqaruvi</h2>
+              <span style={{ fontSize: 10, fontWeight: 700, background: '#f43f5e22', color: '#f43f5e', padding: '4px 8px', borderRadius: 6, border: '1px solid #f43f5e44' }}>
+                Har bir odam uchun
+              </span>
+            </div>
+
+            {/* Legend */}
+            <div style={{
+              padding: '10px 20px',
+              borderBottom: '1px solid rgba(255,255,255,0.03)',
+              display: 'flex', gap: 16, flexWrap: 'wrap'
+            }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                <span style={{ width: 8, height: 8, borderRadius: '50%', background: '#22c55e', display: 'inline-block' }}></span>
+                <span style={{ fontSize: 10, color: '#94a3b8' }}>Yoqilgan</span>
+              </div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                <span style={{ width: 8, height: 8, borderRadius: '50%', background: '#ef4444', display: 'inline-block' }}></span>
+                <span style={{ fontSize: 10, color: '#94a3b8' }}>O'chirilgan</span>
+              </div>
+            </div>
+
+            <div style={{ padding: 0 }}>
+              {users.map((user) => (
+                <div key={user.id} style={{
+                  padding: '14px 20px',
+                  borderBottom: '1px solid rgba(255,255,255,0.03)',
+                  display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+                  transition: 'background 0.2s',
+                }}>
+                  <div style={{ fontWeight: 700, fontSize: 14, color: '#e2e8f0' }}>
+                    {user.name}
+                  </div>
+                  <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+                    {(['nonushta', 'abed', 'kechki_ovqat'] as const).map(mealType => {
+                      const muted = isReminderMuted(user, mealType);
+                      const isToggling = togglingMute === `${user.id}-${mealType}`;
+                      const label = mealType === 'nonushta' ? '🌅' : mealType === 'abed' ? '☀️' : '🌙';
+                      
+                      return (
+                        <button
+                          key={mealType}
+                          type="button"
+                          disabled={isToggling}
+                          onClick={() => handleToggleMute(user.id, mealType, muted)}
+                          style={{
+                            display: 'flex', alignItems: 'center', gap: 4,
+                            padding: '5px 10px',
+                            borderRadius: 10,
+                            border: `1px solid ${muted ? 'rgba(239,68,68,0.3)' : 'rgba(34,197,94,0.3)'}`,
+                            background: muted ? 'rgba(239,68,68,0.1)' : 'rgba(34,197,94,0.1)',
+                            color: muted ? '#ef4444' : '#22c55e',
+                            fontSize: 11, fontWeight: 700,
+                            cursor: isToggling ? 'wait' : 'pointer',
+                            transition: 'all 0.3s ease',
+                            opacity: isToggling ? 0.5 : 1,
+                          }}
+                          title={`${mealType} — ${muted ? 'Eslatma o\'chirilgan' : 'Eslatma yoqilgan'}`}
+                        >
+                          <span>{label}</span>
+                          <span style={{ fontSize: 13 }}>{muted ? '✖' : '✔'}</span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            {users.length === 0 && (
+              <div style={{ padding: 40, textAlign: 'center', color: '#64748b', fontSize: 13, fontStyle: 'italic' }}>
+                Hali foydalanuvchilar yo'q...
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* ===================== ADMIN SETTINGS TAB ===================== */}
         {isAdmin && activeTab === 'admin' && (
           <form onSubmit={handleSaveSettings} style={{
             display: 'flex', flexDirection: 'column', gap: 16
@@ -366,8 +571,16 @@ const TextAreaField = ({ label, value, onChange }: TextAreaFieldProps) => (
   </div>
 );
 
-const grid3: React.CSSProperties = {
-  display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(80px, 1fr))', gap: 10
+const navBtnStyle: React.CSSProperties = {
+  background: 'rgba(15, 23, 42, 0.6)',
+  border: '1px solid rgba(255,255,255,0.1)',
+  borderRadius: 10,
+  color: '#94a3b8',
+  padding: '8px 12px',
+  fontSize: 14,
+  fontWeight: 800,
+  cursor: 'pointer',
+  transition: 'all 0.2s',
 };
 
 const grid2: React.CSSProperties = {
