@@ -142,7 +142,11 @@ async function bootstrap() {
         const s = await prisma.settings.findFirst();
         if (!s) await prisma.settings.create({ data: {} });
 
-        bot.launch()
+        // Eski webhook/polling'ni tozalash (409 Conflict xatosini oldini olish)
+        await bot.telegram.deleteWebhook({ drop_pending_updates: true });
+        console.log('🔄 Eski ulanishlar tozalandi');
+
+        bot.launch({ dropPendingUpdates: true })
             .then(() => console.log('🤖 Bot ishga tushdi'))
             .catch(e => console.error('❌ Bot xatosi:', e));
 
@@ -154,8 +158,15 @@ async function bootstrap() {
             console.log(`🚀 Server ${PORT} portda ishlamoqda`);
         });
 
-        process.once('SIGINT', () => bot.stop('SIGINT'));
-        process.once('SIGTERM', () => bot.stop('SIGTERM'));
+        // Graceful shutdown — bot va database to'g'ri yopiladi
+        const shutdown = async (signal: string) => {
+            console.log(`\n⏹ ${signal} qabul qilindi, yopilmoqda...`);
+            bot.stop(signal);
+            await prisma.$disconnect();
+            process.exit(0);
+        };
+        process.once('SIGINT', () => shutdown('SIGINT'));
+        process.once('SIGTERM', () => shutdown('SIGTERM'));
     } catch (e) {
         console.error('❌ Bootstrap xatosi:', e);
         process.exit(1);
