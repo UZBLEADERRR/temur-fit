@@ -29,13 +29,24 @@ async function isUserInGroup(userId: number, groupId: string): Promise<boolean> 
     }
 }
 
+// Bugungi sanani Asia/Seoul timezone bilan aniqlash (barcha joyda yagona timezone)
+function getTodayDateStr(): string {
+    const koreaTime = toZonedTime(new Date(), 'Asia/Seoul');
+    return format(koreaTime, 'yyyy-MM-dd', { timeZone: 'Asia/Seoul' });
+}
+
+// Koreya vaqtida hozirgi soat va daqiqa
+function getKoreaMinutes(): number {
+    const koreaTime = toZonedTime(new Date(), 'Asia/Seoul');
+    return koreaTime.getHours() * 60 + koreaTime.getMinutes();
+}
+
 async function updatePinnedTable() {
     const settings = await getSettings();
     const groupId = process.env.ALLOWED_GROUP_ID || settings.groupId;
     if (!groupId || !settings.pinnedMessageId) return;
 
-    const koreaTime = toZonedTime(new Date(), 'Asia/Seoul');
-    const dateStr = format(koreaTime, 'yyyy-MM-dd', { timeZone: 'Asia/Seoul' });
+    const dateStr = getTodayDateStr();
 
     const users = await prisma.user.findMany({
         include: { mealRecords: { where: { date: dateStr } } },
@@ -159,7 +170,7 @@ bot.on('message', async (ctx, next) => {
             data: {
                 telegramId,
                 name: msg.text,
-                timezone: 'Asia/Tashkent'
+                timezone: 'Asia/Seoul'
             }
         });
 
@@ -175,7 +186,7 @@ bot.on('message', async (ctx, next) => {
         if (!user) return ctx.reply("Avval /start bosing.");
 
         const tz = find(msg.location.latitude, msg.location.longitude);
-        const timezone = tz.length > 0 ? tz[0] : 'Asia/Tashkent';
+        const timezone = tz.length > 0 ? tz[0] : 'Asia/Seoul';
 
         await prisma.user.update({
             where: { telegramId },
@@ -222,8 +233,9 @@ bot.on('photo', async (ctx) => {
         return ctx.reply("Avval botga /start bosib ro'yxatdan o'ting!", { reply_parameters: { message_id: ctx.message.message_id } });
     }
 
-    const localTime = toZonedTime(new Date(), user.timezone);
-    const currentDateStr = format(localTime, 'yyyy-MM-dd', { timeZone: user.timezone });
+    // Barcha joyda Asia/Seoul timezone ishlatiladi (yagona sana)
+    const currentDateStr = getTodayDateStr();
+    const mCurrent = getKoreaMinutes();
 
     // Target vaqtni olish
     let targetTimeStr = '';
@@ -232,17 +244,15 @@ bot.on('photo', async (ctx) => {
     else if (mealType === 'kechki_ovqat') targetTimeStr = settings.dinnerTime; 
 
     const [tH, tM] = targetTimeStr.split(':').map(Number);
-    const mCurrent = localTime.getHours() * 60 + localTime.getMinutes();
     const mTarget = tH * 60 + tM;
 
     // Status aniqlash (faqatgina 1 soatdan kech qolsa 'late' beriladi)
     let status = 'on_time';
     if (mCurrent > mTarget + 60) {
         status = 'late';
-        await ctx.reply("✅ Qabul qilindi! 💪", { reply_parameters: { message_id: ctx.message.message_id } });
-    } else {
-        await ctx.reply("✅ Qabul qilindi! 💪", { reply_parameters: { message_id: ctx.message.message_id } });
     }
+    
+    await ctx.reply("✅ Qabul qilindi! 💪", { reply_parameters: { message_id: ctx.message.message_id } });
 
     // Bazaga yozish
     await prisma.mealRecord.upsert({
@@ -257,7 +267,7 @@ bot.on('photo', async (ctx) => {
             where: { userId_mealType_date: { userId: user.id, mealType, date: currentDateStr } }
         });
         if (mention) {
-            try { await bot.telegram.deleteMessage(settings.groupId!, mention.messageId); } catch (e) {}
+            try { await bot.telegram.deleteMessage(groupId!, mention.messageId); } catch (e) {}
             await prisma.mention.delete({ where: { id: mention.id } });
         }
     } catch (e) {}

@@ -10,12 +10,23 @@ const MEAL_LABELS: Record<string, string> = {
     kechki_ovqat: 'Kechki ovqat'
 };
 
+// Barcha joyda Asia/Seoul timezone ishlatiladi (yagona timezone)
+function getTodayDateStr(): string {
+    const koreaTime = toZonedTime(new Date(), 'Asia/Seoul');
+    return format(koreaTime, 'yyyy-MM-dd', { timeZone: 'Asia/Seoul' });
+}
+
+function getKoreaMinutes(): number {
+    const koreaTime = toZonedTime(new Date(), 'Asia/Seoul');
+    return koreaTime.getHours() * 60 + koreaTime.getMinutes();
+}
+
 async function updatePinnedTable() {
     const settings = await prisma.settings.findFirst();
-    if (!settings || !settings.groupId) return;
+    const groupId = process.env.ALLOWED_GROUP_ID || settings?.groupId;
+    if (!settings || !groupId) return;
 
-    const koreaTime = toZonedTime(new Date(), 'Asia/Seoul');
-    const dateStr = format(koreaTime, 'yyyy-MM-dd', { timeZone: 'Asia/Seoul' });
+    const dateStr = getTodayDateStr();
 
     const users = await prisma.user.findMany({
         include: {
@@ -50,7 +61,7 @@ async function updatePinnedTable() {
             // Tahrirlash
             try {
                 await bot.telegram.editMessageText(
-                    settings.groupId,
+                    groupId,
                     settings.pinnedMessageId,
                     undefined,
                     table,
@@ -64,14 +75,14 @@ async function updatePinnedTable() {
                 );
             } catch (e) {
                 // Agar xabar o'chirilgan bo'lsa, yangi yaratamiz
-                const msg = await bot.telegram.sendMessage(settings.groupId, table, {
+                const msg = await bot.telegram.sendMessage(groupId, table, {
                     reply_markup: {
                         inline_keyboard: [[
                             { text: "📊 Jadvalni ko'rish", url: process.env.WEBAPP_URL || 'https://google.com' }
                         ]]
                     }
                 });
-                await bot.telegram.pinChatMessage(settings.groupId, msg.message_id, { disable_notification: true });
+                await bot.telegram.pinChatMessage(groupId, msg.message_id, { disable_notification: true });
                 await prisma.settings.update({ where: { id: 1 }, data: { pinnedMessageId: msg.message_id } });
             }
         }
@@ -91,11 +102,11 @@ export function startScheduler() {
             const users = await prisma.user.findMany();
             const reminderInterval = settings.reminderInterval || 60;
 
-            for (const user of users) {
-                const localTime = toZonedTime(new Date(), user.timezone);
-                const currentDateStr = format(localTime, 'yyyy-MM-dd', { timeZone: user.timezone });
-                const mTotalCurrent = localTime.getHours() * 60 + localTime.getMinutes();
+            // Barcha joyda yagona Asia/Seoul timezone ishlatiladi
+            const currentDateStr = getTodayDateStr();
+            const mTotalCurrent = getKoreaMinutes();
 
+            for (const user of users) {
                 const meals = [
                     { type: 'nonushta', time: settings.breakfastTime, nextTime: settings.lunchTime },
                     { type: 'abed', time: settings.lunchTime, nextTime: settings.dinnerTime },
@@ -181,8 +192,7 @@ export function startScheduler() {
             const groupId = process.env.ALLOWED_GROUP_ID || settings?.groupId;
             if (!settings || !groupId) return;
 
-            const koreaTime = toZonedTime(new Date(), 'Asia/Seoul');
-            const dateStr = format(koreaTime, 'yyyy-MM-dd', { timeZone: 'Asia/Seoul' });
+            const dateStr = getTodayDateStr();
 
             // Eski pin ni olib tashlash
             if (settings.pinnedMessageId) {
