@@ -66,7 +66,7 @@ async function updatePinnedTable() {
             {
                 reply_markup: {
                     inline_keyboard: [[
-                        { text: "📊 Jadvalni ko'rish", web_app: { url: process.env.WEBAPP_URL || 'https://google.com' } }
+                        { text: "📊 Jadvalni ko'rish", url: process.env.WEBAPP_URL || 'https://google.com' }
                     ]]
                 }
             }
