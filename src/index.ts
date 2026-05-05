@@ -163,24 +163,21 @@ async function bootstrap() {
         const s = await prisma.settings.findFirst();
         if (!s) await prisma.settings.create({ data: {} });
 
-        // Eski konteyner to'xtashini kutish
-        console.log(`⏳ Eski instance toxtashini kutish (5s)...`);
-        await new Promise(r => setTimeout(r, 5000));
-
-        // Bot'ni retry bilan ishga tushirish
-        launchBotWithRetry();
-
-        startScheduler();
-        console.log('⏰ Scheduler ishga tushdi');
-
+        // Server DARHOL ishga tushadi (Railway health check uchun)
         const PORT = process.env.PORT || 3000;
         app.listen(Number(PORT), '0.0.0.0', () => {
             console.log(`🚀 Server ${PORT} portda ishlamoqda`);
         });
 
-        // Graceful shutdown — bot va database to'g'ri yopiladi
+        startScheduler();
+        console.log('⏰ Scheduler ishga tushdi');
+
+        // Bot fon rejimida: 3s kutib, retry bilan ishga tushadi
+        setTimeout(() => launchBotWithRetry(), 3000);
+
+        // Graceful shutdown
         const shutdown = async (signal: string) => {
-            console.log(`\n⏹ ${signal} qabul qilindi, yopilmoqda...`);
+            console.log(`⏹ ${signal} qabul qilindi, yopilmoqda...`);
             bot.stop(signal);
             await prisma.$disconnect();
             process.exit(0);
@@ -194,4 +191,3 @@ async function bootstrap() {
 }
 
 bootstrap();
-
