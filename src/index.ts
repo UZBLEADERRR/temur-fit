@@ -164,7 +164,7 @@ async function bootstrap() {
         if (!s) await prisma.settings.create({ data: {} });
 
         // Eski konteyner to'xtashini kutish
-        console.log('⏳ Eski instance to'xtashini kutish (5s)...');
+        console.log(`⏳ Eski instance toxtashini kutish (5s)...`);
         await new Promise(r => setTimeout(r, 5000));
 
         // Bot'ni retry bilan ishga tushirish
