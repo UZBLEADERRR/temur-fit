@@ -2,7 +2,7 @@ import { Telegraf, Markup } from 'telegraf';
 import { prisma } from './db';
 import { find } from 'geo-tz';
 import { format, toZonedTime } from 'date-fns-tz';
-import { differenceInHours } from 'date-fns';
+import { differenceInHours, subDays } from 'date-fns';
 import dotenv from 'dotenv';
 dotenv.config();
 
@@ -251,7 +251,7 @@ bot.on('photo', async (ctx) => {
 
     // Userning o'z timezone'ida sana va vaqt
     const userTimezone = user.timezone || 'Asia/Tashkent';
-    const currentDateStr = getUserTodayDateStr(userTimezone);
+    let currentDateStr = getUserTodayDateStr(userTimezone);
     const mCurrent = getUserLocalMinutes(userTimezone);
 
     // Target vaqtni olish
@@ -263,9 +263,17 @@ bot.on('photo', async (ctx) => {
     const [tH, tM] = targetTimeStr.split(':').map(Number);
     const mTarget = tH * 60 + tM;
 
-    // Status aniqlash (faqatgina 1 soatdan kech qolsa 'late' beriladi)
+    // Kechki ovqatni tunda (00:00 dan nonushta vaqtigacha) jo'natsa — kechagi kunga yozish
+    const [bH, bM] = settings.breakfastTime.split(':').map(Number);
+    const mBreakfast = bH * 60 + bM;
+
     let status = 'on_time';
-    if (mCurrent > mTarget + 60) {
+    if (mealType === 'kechki_ovqat' && mCurrent < mBreakfast) {
+        // Tunda jo'natilgan — kechagi kechki ovqat
+        const yesterday = subDays(toZonedTime(new Date(), userTimezone), 1);
+        currentDateStr = format(yesterday, 'yyyy-MM-dd', { timeZone: userTimezone });
+        status = 'late';
+    } else if (mCurrent > mTarget + 60) {
         status = 'late';
     }
     
