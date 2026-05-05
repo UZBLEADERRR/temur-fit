@@ -132,6 +132,27 @@ app.get('/{*path}', (_req, res) => {
     res.sendFile(path.join(clientDistPath, 'index.html'));
 });
 
+// ====== BOT LAUNCH WITH RETRY ======
+async function launchBotWithRetry(maxRetries = 5, delayMs = 3000) {
+    for (let attempt = 1; attempt <= maxRetries; attempt++) {
+        try {
+            await bot.telegram.deleteWebhook({ drop_pending_updates: true });
+            await bot.launch({ dropPendingUpdates: true });
+            console.log(`🤖 Bot ishga tushdi (urinish: ${attempt})`);
+            return;
+        } catch (e: any) {
+            const is409 = e?.response?.error_code === 409;
+            if (is409 && attempt < maxRetries) {
+                console.log(`⏳ Bot conflict (409), ${delayMs / 1000}s kutilmoqda... (${attempt}/${maxRetries})`);
+                await new Promise(r => setTimeout(r, delayMs));
+            } else {
+                console.error('❌ Bot ishga tushmadi:', e);
+                return;
+            }
+        }
+    }
+}
+
 // ====== BOOTSTRAP ======
 async function bootstrap() {
     try {
@@ -142,13 +163,12 @@ async function bootstrap() {
         const s = await prisma.settings.findFirst();
         if (!s) await prisma.settings.create({ data: {} });
 
-        // Eski webhook/polling'ni tozalash (409 Conflict xatosini oldini olish)
-        await bot.telegram.deleteWebhook({ drop_pending_updates: true });
-        console.log('🔄 Eski ulanishlar tozalandi');
+        // Eski konteyner to'xtashini kutish
+        console.log('⏳ Eski instance to'xtashini kutish (5s)...');
+        await new Promise(r => setTimeout(r, 5000));
 
-        bot.launch({ dropPendingUpdates: true })
-            .then(() => console.log('🤖 Bot ishga tushdi'))
-            .catch(e => console.error('❌ Bot xatosi:', e));
+        // Bot'ni retry bilan ishga tushirish
+        launchBotWithRetry();
 
         startScheduler();
         console.log('⏰ Scheduler ishga tushdi');
@@ -174,3 +194,4 @@ async function bootstrap() {
 }
 
 bootstrap();
+
