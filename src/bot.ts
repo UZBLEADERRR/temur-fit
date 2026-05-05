@@ -29,16 +29,16 @@ async function isUserInGroup(userId: number, groupId: string): Promise<boolean> 
     }
 }
 
-// Bugungi sanani Asia/Seoul timezone bilan aniqlash (barcha joyda yagona timezone)
-function getTodayDateStr(): string {
-    const koreaTime = toZonedTime(new Date(), 'Asia/Seoul');
-    return format(koreaTime, 'yyyy-MM-dd', { timeZone: 'Asia/Seoul' });
+// Userning mahalliy vaqtida bugungi sana
+function getUserTodayDateStr(timezone: string): string {
+    const localTime = toZonedTime(new Date(), timezone);
+    return format(localTime, 'yyyy-MM-dd', { timeZone: timezone });
 }
 
-// Koreya vaqtida hozirgi soat va daqiqa
-function getKoreaMinutes(): number {
-    const koreaTime = toZonedTime(new Date(), 'Asia/Seoul');
-    return koreaTime.getHours() * 60 + koreaTime.getMinutes();
+// Userning mahalliy vaqtidagi daqiqalar (0-1439)
+function getUserLocalMinutes(timezone: string): number {
+    const localTime = toZonedTime(new Date(), timezone);
+    return localTime.getHours() * 60 + localTime.getMinutes();
 }
 
 async function updatePinnedTable() {
@@ -46,13 +46,22 @@ async function updatePinnedTable() {
     const groupId = process.env.ALLOWED_GROUP_ID || settings.groupId;
     if (!groupId || !settings.pinnedMessageId) return;
 
-    const dateStr = getTodayDateStr();
+    // Jadval uchun umumiy sana (Korea vaqti bo'yicha)
+    const dateStr = getUserTodayDateStr('Asia/Seoul');
 
-    const users = await prisma.user.findMany({
-        include: { mealRecords: { where: { date: dateStr } } },
-        orderBy: { id: 'asc' }
-    });
-    if (users.length === 0) return;
+    const usersRaw = await prisma.user.findMany({ orderBy: { id: 'asc' } });
+    if (usersRaw.length === 0) return;
+
+    // Har bir user uchun o'z timezone'idagi bugungi meal record'larini olish
+    const users = await Promise.all(
+        usersRaw.map(async (user) => {
+            const userDate = getUserTodayDateStr(user.timezone);
+            const mealRecords = await prisma.mealRecord.findMany({
+                where: { userId: user.id, date: userDate }
+            });
+            return { ...user, mealRecords };
+        })
+    );
 
     let table = `📅 Sana: ${dateStr}\n💪 Temur.fit ratsion jadvali\n\n`;
     table += `No | Ism          | N | A | K\n`;
@@ -233,9 +242,10 @@ bot.on('photo', async (ctx) => {
         return ctx.reply("Avval botga /start bosib ro'yxatdan o'ting!", { reply_parameters: { message_id: ctx.message.message_id } });
     }
 
-    // Barcha joyda Asia/Seoul timezone ishlatiladi (yagona sana)
-    const currentDateStr = getTodayDateStr();
-    const mCurrent = getKoreaMinutes();
+    // Userning o'z timezone'ida sana va vaqt
+    const userTimezone = user.timezone || 'Asia/Tashkent';
+    const currentDateStr = getUserTodayDateStr(userTimezone);
+    const mCurrent = getUserLocalMinutes(userTimezone);
 
     // Target vaqtni olish
     let targetTimeStr = '';

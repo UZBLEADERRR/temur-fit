@@ -7,7 +7,7 @@
   "description": "Temur.fit - Sport guruh ratsion nazorat boti",
   "main": "src/index.ts",
   "scripts": {
-    "start": "npx prisma db push --accept-data-loss && npx tsx src/index.ts",
+    "start": "npx prisma db push --accept-data-loss --skip-generate && npx tsx src/index.ts",
     "dev": "npx tsx watch src/index.ts",
     "build": "cd client && npm install && npm run build",
     "postinstall": "npx prisma generate",

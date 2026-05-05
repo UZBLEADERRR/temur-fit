@@ -10,40 +10,58 @@ const MEAL_LABELS: Record<string, string> = {
     kechki_ovqat: 'Kechki ovqat'
 };
 
-// Barcha joyda Asia/Seoul timezone ishlatiladi (yagona timezone)
-function getTodayDateStr(): string {
-    const koreaTime = toZonedTime(new Date(), 'Asia/Seoul');
-    return format(koreaTime, 'yyyy-MM-dd', { timeZone: 'Asia/Seoul' });
+// ========== PER-USER TIMEZONE HELPERS ==========
+
+/**
+ * Userning mahalliy vaqtida bugungi sanani olish
+ * Masalan: Korea user → '2026-05-06', O'zbek user → '2026-05-05' (agar tunda farq bo'lsa)
+ */
+function getUserTodayDateStr(timezone: string): string {
+    const localTime = toZonedTime(new Date(), timezone);
+    return format(localTime, 'yyyy-MM-dd', { timeZone: timezone });
 }
 
-function getKoreaMinutes(): number {
-    const koreaTime = toZonedTime(new Date(), 'Asia/Seoul');
-    return koreaTime.getHours() * 60 + koreaTime.getMinutes();
+/**
+ * Userning mahalliy vaqtidagi daqiqalarni olish (0-1439)
+ * Masalan: soat 14:30 → 870 daqiqa
+ */
+function getUserLocalMinutes(timezone: string): number {
+    const localTime = toZonedTime(new Date(), timezone);
+    return localTime.getHours() * 60 + localTime.getMinutes();
 }
+
+// ========== PINNED TABLE ==========
 
 async function updatePinnedTable() {
     const settings = await prisma.settings.findFirst();
     const groupId = process.env.ALLOWED_GROUP_ID || settings?.groupId;
     if (!settings || !groupId) return;
 
-    const dateStr = getTodayDateStr();
-
     const users = await prisma.user.findMany({
-        include: {
-            mealRecords: {
-                where: { date: dateStr }
-            }
-        },
         orderBy: { id: 'asc' }
     });
 
     if (users.length === 0) return;
 
-    let table = `📅 Sana: ${dateStr}\n💪 Temur.fit ratsion jadvali\n\n`;
+    // Har bir user uchun o'z timezone'idagi bugungi sanani topib, meal record'larini olish
+    const usersWithMeals = await Promise.all(
+        users.map(async (user) => {
+            const userDateStr = getUserTodayDateStr(user.timezone);
+            const mealRecords = await prisma.mealRecord.findMany({
+                where: { userId: user.id, date: userDateStr }
+            });
+            return { ...user, mealRecords, localDate: userDateStr };
+        })
+    );
+
+    // Jadval uchun sanani ko'rsatish (server vaqti bo'yicha umumiy)
+    const displayDate = getUserTodayDateStr('Asia/Seoul');
+
+    let table = `📅 Sana: ${displayDate}\n💪 Temur.fit ratsion jadvali\n\n`;
     table += `No | Ism          | N | A | K\n`;
     table += `────────────────────────────\n`;
 
-    users.forEach((user, idx) => {
+    usersWithMeals.forEach((user, idx) => {
         const getStatus = (type: string) => {
             const record = user.mealRecords.find(r => r.mealType === type);
             if (!record) return '✖';
@@ -91,6 +109,8 @@ async function updatePinnedTable() {
     }
 }
 
+// ========== SCHEDULER ==========
+
 export function startScheduler() {
     // ===== Har 1 daqiqada eslatma tekshiruvchi =====
     cron.schedule('* * * * *', async () => {
@@ -102,11 +122,12 @@ export function startScheduler() {
             const users = await prisma.user.findMany();
             const reminderInterval = settings.reminderInterval || 60;
 
-            // Barcha joyda yagona Asia/Seoul timezone ishlatiladi
-            const currentDateStr = getTodayDateStr();
-            const mTotalCurrent = getKoreaMinutes();
-
             for (const user of users) {
+                // ✅ Har bir user o'z timezone'ida tekshiriladi
+                const userTimezone = user.timezone || 'Asia/Tashkent';
+                const currentDateStr = getUserTodayDateStr(userTimezone);
+                const userMinutes = getUserLocalMinutes(userTimezone);
+
                 const meals = [
                     { type: 'nonushta', time: settings.breakfastTime, nextTime: settings.lunchTime },
                     { type: 'abed', time: settings.lunchTime, nextTime: settings.dinnerTime },
@@ -120,7 +141,8 @@ export function startScheduler() {
                     const mNext = nH * 60 + nM;
 
                     // Faqat target vaqtdan keyin va keyingi ovqatgacha eslatma yuboramiz
-                    if (mTotalCurrent <= mTarget || mTotalCurrent > mNext) continue;
+                    // User'ning MAHALLIY vaqtida tekshiriladi
+                    if (userMinutes <= mTarget || userMinutes > mNext) continue;
 
                     // Eslatma o'chirilganligini tekshirish (ReminderOverride)
                     const override = await prisma.reminderOverride.findUnique({
@@ -155,7 +177,8 @@ export function startScheduler() {
 
                     // Yangi eslatma yuborish
                     const mealLabel = MEAL_LABELS[meal.type] || meal.type;
-                    const text = `⚠️ <a href="tg://user?id=${user.telegramId}">${user.name}</a> ${mealLabel}ni jo'natmadingiz! Tezroq bo'ling! 😤`;
+                    const tzLabel = userTimezone === 'Asia/Seoul' ? '🇰🇷' : '🇺🇿';
+                    const text = `⚠️ <a href="tg://user?id=${user.telegramId}">${user.name}</a> ${mealLabel}ni jo'natmadingiz! Tezroq bo'ling! 😤 ${tzLabel}`;
 
                     try {
                         const sentMsg = await bot.telegram.sendMessage(groupId, text, { parse_mode: 'HTML' });
@@ -192,7 +215,7 @@ export function startScheduler() {
             const groupId = process.env.ALLOWED_GROUP_ID || settings?.groupId;
             if (!settings || !groupId) return;
 
-            const dateStr = getTodayDateStr();
+            const dateStr = getUserTodayDateStr('Asia/Seoul');
 
             // Eski pin ni olib tashlash
             if (settings.pinnedMessageId) {
