@@ -46,8 +46,8 @@ async function updatePinnedTable() {
     const groupId = process.env.ALLOWED_GROUP_ID || settings.groupId;
     if (!groupId || !settings.pinnedMessageId) return;
 
-    // Jadval uchun umumiy sana (Korea vaqti bo'yicha)
-    const dateStr = getUserTodayDateStr('Asia/Seoul');
+    // Jadval uchun O'zbekiston vaqti bo'yicha sana
+    const dateStr = getUserTodayDateStr('Asia/Tashkent');
 
     const usersRaw = await prisma.user.findMany({ orderBy: { id: 'asc' } });
     if (usersRaw.length === 0) return;
@@ -131,6 +131,24 @@ bot.start(async (ctx) => {
     const settings = await getSettings();
     const groupId = process.env.ALLOWED_GROUP_ID || settings.groupId;
 
+    // Admin tekshiruvi — guruh a'zosi bo'lmasa ham kirishi mumkin
+    const envAdmins = (process.env.ADMIN_IDS || '').split(',').map(s => s.trim()).filter(Boolean);
+    const existingUser = await prisma.user.findUnique({ where: { telegramId } });
+    const isAdmin = existingUser?.role === 'admin' || envAdmins.includes(telegramId);
+
+    if (isAdmin) {
+        // Admin bazada yo'q bo'lsa, yaratamiz
+        if (!existingUser) {
+            await prisma.user.create({
+                data: { telegramId, name: ctx.from.first_name || 'Admin', role: 'admin', timezone: 'Asia/Tashkent' }
+            });
+        }
+        return ctx.reply(`Xush kelibsiz, ${existingUser?.name || ctx.from.first_name}! 🏋️`, Markup.inlineKeyboard([
+            Markup.button.webApp("⚙️ Boshqaruv Paneli", process.env.WEBAPP_URL || 'https://google.com')
+        ]));
+    }
+
+    // Oddiy userlar uchun guruh tekshiruvi
     if (!groupId) {
         return ctx.reply("⚠️ Hali guruh sozlanmagan. Admin guruhga botni qo'shib /setgroup bosishi yoki Railway'da ALLOWED_GROUP_ID kiritishi kerak.");
     }
@@ -140,22 +158,11 @@ bot.start(async (ctx) => {
         return ctx.reply("❌ Kechirasiz, siz Temur.fit guruhining a'zosi emassiz!");
     }
 
-    const user = await prisma.user.findUnique({ where: { telegramId } });
-
-    if (!user) {
+    if (!existingUser) {
         return ctx.reply("Assalomu alaykum! Iltimos, ismingizni kiriting:", Markup.forceReply());
     }
 
-    const envAdmins = (process.env.ADMIN_IDS || '').split(',').map(s => s.trim()).filter(Boolean);
-    const isAdmin = user.role === 'admin' || envAdmins.includes(telegramId);
-
-    if (isAdmin) {
-        return ctx.reply(`Xush kelibsiz, ${user.name}! 🏋️`, Markup.inlineKeyboard([
-            Markup.button.webApp("⚙️ Boshqaruv Paneli", process.env.WEBAPP_URL || 'https://google.com')
-        ]));
-    }
-
-    return ctx.reply(`Xush kelibsiz, ${user.name}! 💪 Kunlik ratsioningizni guruhga jo'nating.`, Markup.inlineKeyboard([
+    return ctx.reply(`Xush kelibsiz, ${existingUser.name}! 💪 Kunlik ratsioningizni guruhga jo'nating.`, Markup.inlineKeyboard([
         Markup.button.webApp("📊 Jadvalni ko'rish", process.env.WEBAPP_URL || 'https://google.com')
     ]));
 });

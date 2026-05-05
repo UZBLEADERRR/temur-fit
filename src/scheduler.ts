@@ -54,8 +54,8 @@ async function updatePinnedTable() {
         })
     );
 
-    // Jadval uchun sanani ko'rsatish (server vaqti bo'yicha umumiy)
-    const displayDate = getUserTodayDateStr('Asia/Seoul');
+    // Jadval uchun O'zbekiston vaqti bo'yicha sana
+    const displayDate = getUserTodayDateStr('Asia/Tashkent');
 
     let table = `📅 Sana: ${displayDate}\n💪 Temur.fit ratsion jadvali\n\n`;
     table += `No | Ism          | N | A | K\n`;
@@ -208,14 +208,14 @@ export function startScheduler() {
         }
     });
 
-    // ===== Koreya vaqti bilan ertalab 06:00 da yangi kunlik jadval =====
+    // ===== O'zbekiston vaqti bilan ertalab 06:00 da yangi kunlik jadval =====
     cron.schedule('0 6 * * *', async () => {
         try {
             const settings = await prisma.settings.findFirst();
             const groupId = process.env.ALLOWED_GROUP_ID || settings?.groupId;
             if (!settings || !groupId) return;
 
-            const dateStr = getUserTodayDateStr('Asia/Seoul');
+            const dateStr = getUserTodayDateStr('Asia/Tashkent');
 
             // Eski pin ni olib tashlash
             if (settings.pinnedMessageId) {
@@ -255,7 +255,7 @@ export function startScheduler() {
             console.error('Kunlik jadval xatosi:', e);
         }
     }, {
-        timezone: 'Asia/Seoul'
+        timezone: 'Asia/Tashkent'
     });
 }
 
