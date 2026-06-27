@@ -1,10 +1,10 @@
 {
-  "name": "temur-fit",
+  "name": "temur-fit-saas",
   "engines": {
     "node": ">=20"
   },
-  "version": "1.0.0",
-  "description": "Temur.fit - Sport guruh ratsion nazorat boti",
+  "version": "2.0.0",
+  "description": "Temur.fit SAAS - ko'p-tenantli sport ratsion nazorat platformasi (har guruh uchun alohida bot)",
   "main": "src/index.ts",
   "scripts": {
     "start": "npx prisma db push --accept-data-loss --skip-generate && npx tsx src/index.ts",
