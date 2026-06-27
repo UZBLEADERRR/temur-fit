@@ -10,6 +10,29 @@ const MEAL_LABELS: Record<string, string> = {
     kechki_ovqat: 'Kechki ovqat'
 };
 
+// Telegram xatosining tavsifini (description) ajratib olish
+function getTelegramErrorDescription(e: any): string {
+    return e?.response?.description || e?.description || '';
+}
+
+/**
+ * Telegram'ning vaqtinchalik xatolarida (502/503/504 Bad Gateway, 429 Too Many Requests)
+ * exponential backoff bilan qayta urinish. Doimiy xatolar (masalan 400) darhol uloqtiriladi.
+ */
+async function sendWithRetry<T>(fn: () => Promise<T>, retries = 3): Promise<T> {
+    for (let attempt = 1; ; attempt++) {
+        try {
+            return await fn();
+        } catch (e: any) {
+            const code = e?.response?.error_code;
+            const transient = code === 429 || (typeof code === 'number' && code >= 500 && code < 600);
+            if (!transient || attempt > retries) throw e;
+            const delayMs = 1000 * Math.pow(2, attempt - 1); // 1s, 2s, 4s
+            await new Promise(r => setTimeout(r, delayMs));
+        }
+    }
+}
+
 // ========== PER-USER TIMEZONE HELPERS ==========
 
 /**
@@ -92,16 +115,29 @@ async function updatePinnedTable() {
                     }
                 );
             } catch (e) {
-                // Agar xabar o'chirilgan bo'lsa, yangi yaratamiz
-                const msg = await bot.telegram.sendMessage(groupId, table, {
-                    reply_markup: {
-                        inline_keyboard: [[
-                            { text: "📊 Jadvalni ko'rish", url: process.env.WEBAPP_URL || 'https://google.com' }
-                        ]]
-                    }
-                });
-                await bot.telegram.pinChatMessage(groupId, msg.message_id, { disable_notification: true });
-                await prisma.settings.update({ where: { id: 1 }, data: { pinnedMessageId: msg.message_id } });
+                const desc = getTelegramErrorDescription(e);
+
+                // Matn o'zgarmagan bo'lsa — jadval allaqachon to'g'ri, yangi xabar yubormaymiz
+                if (desc.includes('message is not modified')) {
+                    return;
+                }
+
+                // Faqat xabar o'chirilgan/tahrirlab bo'lmasa yangisini yaratamiz
+                if (desc.includes('message to edit not found') || desc.includes("message can't be edited")) {
+                    const msg = await bot.telegram.sendMessage(groupId, table, {
+                        reply_markup: {
+                            inline_keyboard: [[
+                                { text: "📊 Jadvalni ko'rish", url: process.env.WEBAPP_URL || 'https://google.com' }
+                            ]]
+                        }
+                    });
+                    await bot.telegram.pinChatMessage(groupId, msg.message_id, { disable_notification: true });
+                    await prisma.settings.update({ where: { id: settings.id }, data: { pinnedMessageId: msg.message_id } });
+                    return;
+                }
+
+                // Boshqa xatolarni qayta uloqtirib, tashqi catch'ga beramiz
+                throw e;
             }
         }
     } catch (e) {
@@ -181,7 +217,7 @@ export function startScheduler() {
                     const text = `⚠️ <a href="tg://user?id=${user.telegramId}">${user.name}</a> ${mealLabel}ni jo'natmadingiz! Tezroq bo'ling! 😤 ${tzLabel}`;
 
                     try {
-                        const sentMsg = await bot.telegram.sendMessage(groupId, text, { parse_mode: 'HTML' });
+                        const sentMsg = await sendWithRetry(() => bot.telegram.sendMessage(groupId, text, { parse_mode: 'HTML' }));
 
                         await prisma.mention.upsert({
                             where: { userId_mealType_date: { userId: user.id, mealType: meal.type, date: currentDateStr } },
@@ -235,13 +271,13 @@ export function startScheduler() {
                 table += `${String(idx + 1).padStart(2)}. ${name} | ✖ | ✖ | ✖\n`;
             });
 
-            const msg = await bot.telegram.sendMessage(groupId, table, {
+            const msg = await sendWithRetry(() => bot.telegram.sendMessage(groupId, table, {
                 reply_markup: {
                     inline_keyboard: [[
                         { text: "📊 Jadvalni ko'rish", url: process.env.WEBAPP_URL || 'https://google.com' }
                     ]]
                 }
-            });
+            }));
 
             await bot.telegram.pinChatMessage(groupId, msg.message_id, { disable_notification: false });
 

@@ -12,6 +12,11 @@ export const bot = new Telegraf(botToken);
 
 // ========== YORDAMCHI FUNKSIYALAR ==========
 
+// Telegram xatosining tavsifini (description) ajratib olish
+function getTelegramErrorDescription(e: any): string {
+    return e?.response?.description || e?.description || '';
+}
+
 const getSettings = async () => {
     let settings = await prisma.settings.findFirst();
     if (!settings) {
@@ -92,6 +97,31 @@ async function updatePinnedTable() {
             }
         );
     } catch (e) {
+        const desc = getTelegramErrorDescription(e);
+
+        // Matn o'zgarmagan bo'lsa — jadval allaqachon to'g'ri, xato emas
+        if (desc.includes('message is not modified')) {
+            return;
+        }
+
+        // Pinlangan xabar o'chirilgan/topilmasa — yangisini yaratib qayta pinlash
+        if (desc.includes('message to edit not found') || desc.includes("message can't be edited")) {
+            try {
+                const msg = await bot.telegram.sendMessage(groupId, table, {
+                    reply_markup: {
+                        inline_keyboard: [[
+                            { text: "📊 Jadvalni ko'rish", url: process.env.WEBAPP_URL || 'https://google.com' }
+                        ]]
+                    }
+                });
+                await bot.telegram.pinChatMessage(groupId, msg.message_id, { disable_notification: true });
+                await prisma.settings.update({ where: { id: settings.id }, data: { pinnedMessageId: msg.message_id } });
+            } catch (e2) {
+                console.error('Pinlangan jadvalni qayta yaratishda xato:', e2);
+            }
+            return;
+        }
+
         console.error('Jadvalni yangilashda xato:', e);
     }
 }
@@ -297,6 +327,7 @@ bot.on('photo', async (ctx) => {
         }
     } catch (e) {}
 
-    // Pinned jadval yangilash
-    await updatePinnedTable();
+    // Pinned jadval yangilash — handler'ni bloklamasligi uchun fonda bajariladi
+    // (aks holda Telegram API sekin javob bersa, handler 90s timeout'ga uchrab bot qayta ishga tushadi)
+    void updatePinnedTable().catch(e => console.error('Pinned jadval yangilash xatosi:', e));
 });
